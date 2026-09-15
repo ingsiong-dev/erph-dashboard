@@ -182,6 +182,15 @@ function asPct_(value) {
   return n <= 1.5 ? n * 100 : n;
 }
 
+// Google Sheets displays 0.96435 as 96.44% (round half up) while JS toFixed(2)
+// gives 96.43, because the stored value is really 96.43499999... . Round half up
+// on the decimal value so the portal always shows the same figure as the sheet -
+// a teacher comparing the two should never see a 0.01 disagreement.
+function round2_(n) {
+  if (n === null || n === undefined || isNaN(n)) return null;
+  return Math.round(Number(n) * 100 + 1e-9) / 100;
+}
+
 function getKehadiranAnalysis() {
   const cache = CacheService.getScriptCache();
   try {
@@ -200,7 +209,7 @@ function getKehadiranAnalysis() {
     .map(function (row) {
       const code = String(row[0] || '').trim().toUpperCase();
       const pct = asPct_(row[1]);
-      return { code: code, pct: pct === null ? null : Number(pct.toFixed(2)) };
+      return { code: code, pct: round2_(pct) };
     })
     .filter(function (m) { return m.code !== ''; });
 
@@ -208,7 +217,7 @@ function getKehadiranAnalysis() {
   // never read from a separate column, so the two can never disagree
   let previous = null;
   monthly.forEach(function (m) {
-    m.beza = (m.pct !== null && previous !== null) ? Number((m.pct - previous).toFixed(2)) : null;
+    m.beza = (m.pct !== null && previous !== null) ? round2_(m.pct - previous) : null;
     if (m.pct !== null) previous = m.pct;
   });
 
@@ -217,7 +226,7 @@ function getKehadiranAnalysis() {
     .map(function (row) {
       const label = String(row[0] || '').trim().toUpperCase();
       const pct = asPct_(row[1]);
-      return { form: label, pct: pct === null ? null : Number(pct.toFixed(2)) };
+      return { form: label, pct: round2_(pct) };
     })
     .filter(function (f) { return f.form !== ''; });
 
@@ -234,7 +243,7 @@ function getKehadiranAnalysis() {
 
   function addClass_(form, name, pct) {
     if (pct === null) return;
-    const entry = { name: name, pct: Number(pct.toFixed(2)) };
+    const entry = { name: name, pct: round2_(pct) };
     if (form) {
       if (!groups[form]) { groups[form] = []; groupOrder.push(form); }
       groups[form].push(entry);
@@ -274,7 +283,7 @@ function getKehadiranAnalysis() {
     .map(function (row) {
       const code = String(row[0] || '').trim().toUpperCase();
       const pct = asPct_(row[1]);
-      return { code: code, pct: pct === null ? null : Number(pct.toFixed(2)) };
+      return { code: code, pct: round2_(pct) };
     })
     .filter(function (m) { return m.code !== ''; });
   const t5Yearly = asPct_(graf.getRange('D68').getValue());
@@ -306,13 +315,13 @@ function getKehadiranAnalysis() {
   const reported = monthly.filter(function (m) { return m.pct !== null; });
   const payload = {
     year: 2026,
-    yearlyAverage: yearly === null ? null : Number(yearly.toFixed(2)),
+    yearlyAverage: round2_(yearly),
     monthly: monthly,
     forms: forms,
     classes: classes,
     classGroups: classGroups,
     monthlyT5: monthlyT5,
-    t5Yearly: t5Yearly === null ? null : Number(t5Yearly.toFixed(2)),
+    t5Yearly: round2_(t5Yearly),
     monthsReported: reported.length,
     monthsTotal: monthly.length,
     latest: reported.length ? reported[reported.length - 1] : null,
