@@ -1,0 +1,188 @@
+<div class="dashboard-content-grid">
+
+  <div class="reporting-options-grid-layout">
+
+    <div class="report-action-selection-card">
+      <div class="card-icon-illustration-badge blue">
+        <span class="material-symbols-outlined">folder_open</span>
+      </div>
+      <h3>Laporan Enrolmen Murid</h3>
+      <p>Pilih tahun dan bulan, kemudian muat turun Laporan Enrolmen (PDF) daripada Google Drive.</p>
+
+      <div class="select-dropdown-group" style="margin-bottom:16px;">
+        <select id="enrol-year" onchange="renderEnrolMonths()" title="Tahun"></select>
+        <select id="enrol-month" title="Bulan"></select>
+      </div>
+
+      <div class="report-action-buttons-group-row">
+        <button id="enrol-download-btn" class="btn-report-download action-xlsx" onclick="downloadEnrolmen()">
+          Muat Turun Laporan
+        </button>
+      </div>
+
+      <p id="enrol-status" class="empty-state-text" style="padding:12px 0 0 0; text-align:left;"></p>
+    </div>
+
+  </div>
+
+  <div class="table-container-card">
+    <div class="table-card-header">
+      <h3>Status Laporan Enrolmen <span id="enrol-year-label"></span></h3>
+    </div>
+    <div class="table-responsive-wrapper">
+      <table class="saas-data-table">
+        <thead>
+          <tr>
+            <th>Bulan</th>
+            <th>Status</th>
+            <th>Saiz Fail</th>
+            <th>Kemas Kini</th>
+          </tr>
+        </thead>
+        <tbody id="enrol-status-rows">
+          <tr><td colspan="4" class="center-text">Buka menu Kehadiran untuk memuatkan senarai laporan.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  var ENROL_INDEX = null;
+  var ENROL_LOADING = false;
+
+  function setEnrolStatus(msg, isError) {
+    var el = document.getElementById('enrol-status');
+    if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'empty-state-text' + (isError ? ' text-error' : '');
+    el.style.padding = '12px 0 0 0';
+    el.style.textAlign = 'left';
+  }
+
+  // Loaded lazily, the first time the Kehadiran menu is opened. The server
+  // result is cached for 5 minutes, so repeatedly switching views is cheap.
+  function initKehadiranModule() {
+    if (ENROL_INDEX || ENROL_LOADING) return;
+    ENROL_LOADING = true;
+    setEnrolStatus('Memuatkan senarai laporan...');
+
+    google.script.run
+      .withSuccessHandler(function (idx) {
+        ENROL_LOADING = false;
+        ENROL_INDEX = idx;
+
+        var years = Object.keys((idx && idx.years) || {}).sort();
+        var yearSel = document.getElementById('enrol-year');
+        yearSel.innerHTML = '';
+        years.forEach(function (y) {
+          var o = document.createElement('option');
+          o.value = y;
+          o.textContent = y;
+          yearSel.appendChild(o);
+        });
+        if (years.length) yearSel.value = years[years.length - 1];
+
+        renderEnrolMonths();
+        setEnrolStatus('');
+      })
+      .withFailureHandler(function (err) {
+        ENROL_LOADING = false;
+        setEnrolStatus('Gagal memuatkan senarai laporan: ' +
+          ((err && err.message) ? err.message : err), true);
+      })
+      .getEnrolmenIndex();
+  }
+
+  function renderEnrolMonths() {
+    if (!ENROL_INDEX) return;
+    var yearSel  = document.getElementById('enrol-year');
+    var monthSel = document.getElementById('enrol-month');
+    var tbody    = document.getElementById('enrol-status-rows');
+    var label    = document.getElementById('enrol-year-label');
+    if (!yearSel || !monthSel) return;
+
+    var year   = yearSel.value;
+    var months = (ENROL_INDEX.years || {})[year] || [];
+    if (label) label.textContent = year;
+
+    monthSel.innerHTML = '';
+    var firstAvailable = null;
+    months.forEach(function (m) {
+      var o = document.createElement('option');
+      o.value = m.month;
+      o.textContent = m.available ? m.month : m.month + ' (belum tersedia)';
+      if (!m.available) o.disabled = true;
+      else if (!firstAvailable) firstAvailable = m.month;
+      monthSel.appendChild(o);
+    });
+    if (firstAvailable) monthSel.value = firstAvailable;
+
+    if (tbody) {
+      var rows = months.map(function (m) {
+        return '<tr><td>' + m.month + '</td>' +
+          '<td><span class="status-pill ' + (m.available ? 'completed' : 'none') + '">' +
+          (m.available ? 'Tersedia' : 'Belum tersedia') + '</span></td>' +
+          '<td>' + (m.available ? m.sizeLabel : '-') + '</td>' +
+          '<td>' + (m.available ? m.modified : '-') + '</td></tr>';
+      }).join('');
+      tbody.innerHTML = rows || '<tr><td colspan="4" class="center-text">Tiada data.</td></tr>';
+    }
+
+    var ready = months.filter(function (m) { return m.available; }).length;
+    setEnrolStatus(ready + ' daripada ' + months.length +
+      ' bulan tersedia untuk tahun ' + year + '.');
+  }
+
+  function downloadEnrolmen() {
+    if (!ENROL_INDEX) {
+      setEnrolStatus('Senarai laporan belum dimuatkan. Buka semula menu Kehadiran.', true);
+      return;
+    }
+    var yearSel  = document.getElementById('enrol-year');
+    var monthSel = document.getElementById('enrol-month');
+    var year  = yearSel ? yearSel.value : '';
+    var month = monthSel ? monthSel.value : '';
+    var months = (ENROL_INDEX.years || {})[year] || [];
+    var entry = months.filter(function (m) { return m.month === month; })[0];
+
+    if (!entry || !entry.available) {
+      setEnrolStatus('Laporan ' + month + ' ' + year + ' belum tersedia.', true);
+      return;
+    }
+
+    var btn = document.getElementById('enrol-download-btn');
+    if (btn) btn.disabled = true;
+    setEnrolStatus('Memuat turun ' + month + ' ' + year + '...');
+
+    google.script.run
+      .withSuccessHandler(function (res) {
+        if (btn) btn.disabled = false;
+        if (!res || !res.base64) {
+          setEnrolStatus('Fail tidak dijumpai.', true);
+          return;
+        }
+        var bin   = atob(res.base64);
+        var bytes = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+
+        var blob = new Blob([bytes], { type: res.mimeType || 'application/pdf' });
+        var url  = URL.createObjectURL(blob);
+        var a    = document.createElement('a');
+        a.href = url;
+        a.download = res.filename || ('Laporan Enrolmen ' + month + ' ' + year + '.pdf');
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+
+        setEnrolStatus('Selesai dimuat turun: ' + (res.filename || (month + ' ' + year)));
+      })
+      .withFailureHandler(function (err) {
+        if (btn) btn.disabled = false;
+        setEnrolStatus('Gagal memuat turun: ' + ((err && err.message) ? err.message : err), true);
+      })
+      .getEnrolmenReport(year, month);
+  }
+</script>

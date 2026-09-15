@@ -76,10 +76,21 @@ function switchActiveView(targetViewId) {
     
     const titleHeader = document.getElementById('current-view-title');
     titleHeader.style.display = "block"; 
-    titleHeader.innerText = "Dashboard Rumusan eRPH";
+    var VIEW_TITLES = {
+      dashboard: 'Rumusan eRPH',
+      teachers:  'Senarai Guru',
+      detail:    'Butiran Guru',
+      kehadiran: 'Kehadiran & Enrolmen',
+      analytics: 'Analisis',
+      reports:   'Laporan'
+    };
+    titleHeader.innerText = VIEW_TITLES[targetViewId] || 'DATA SMK MERADONG';
   }
   
   // Custom view hook allocations
+  if (targetViewId === 'kehadiran') {
+     initKehadiranModule();
+  }
   if (targetViewId === 'analytics') {
      generateAdvancedAnalyticsWorkspaceCharts();
   }
