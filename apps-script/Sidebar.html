@@ -1,0 +1,32 @@
+<aside class="sidebar-wrapper">
+  <div class="brand-header">
+    <span class="material-symbols-outlined logo-icon">monitoring</span>
+    <div class="brand-title">
+      <h1>eRPH System</h1>
+      <small>Management Dashboard</small>
+    </div>
+  </div>
+  
+  <nav class="sidebar-menu-links">
+    <a href="#" class="menu-link active" data-target="dashboard" onclick="switchActiveView('dashboard')">
+      <span class="material-symbols-outlined">dashboard</span>
+      <span>Dashboard</span>
+    </a>
+    <a href="#" class="menu-link" data-target="teachers" onclick="switchActiveView('teachers')">
+      <span class="material-symbols-outlined">group</span>
+      <span>Teachers</span>
+    </a>
+    <a href="#" class="menu-link" data-target="reports" onclick="switchActiveView('reports')">
+      <span class="material-symbols-outlined">description</span>
+      <span>Report</span>
+    </a>
+  </nav>
+
+  <div class="sidebar-footer-info">
+    <button class="btn-refresh" onclick="forceSystemDataRefresh()">
+      <span class="material-symbols-outlined">sync</span>
+      <span>Sync Database</span>
+    </button>
+    <p id="cache-timestamp-label">Sync status: Processing...</p>
+  </div>
+</aside>

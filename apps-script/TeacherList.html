@@ -1,0 +1,58 @@
+<div class="teachers-directory-panel">
+  
+  <div class="filter-action-toolbar">
+    <div class="search-input-group">
+      <span class="material-symbols-outlined">search</span>
+      <input type="text" id="directory-search-box" placeholder="Search parameters by name, email or curriculum..." oninput="executeDirectoryQueryEvaluation()">
+    </div>
+    
+    <div class="select-dropdown-group">
+      <select id="filter-compliance-status" onchange="executeDirectoryQueryEvaluation()">
+        <option value="ALL">All</option>
+        <option value="Completed">Completed (100%)</option>
+        <option value="Incomplete">Incomplete (&lt;100%)</option>
+        <option value="BELOW_50">Perhatian (&lt;50%)</option>
+        <option value="NO_SUBMISSION">Tiada Penghantaran (0)</option>
+      </select>
+
+      <select id="filter-sorting-rule" onchange="executeDirectoryQueryEvaluation()">
+        <option value="ALPHA_ASC">Alphabetical Sorted (A-Z)</option>
+        <option value="SUB_DESC">Highest Submissions First</option>
+        <option value="SUB_ASC">Lowest Submissions First</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-container-card">
+    <div class="table-responsive-wrapper">
+      <table class="saas-data-table">
+        <thead>
+          <tr>
+            <th>Nama Guru</th>
+            <th>Email</th>
+            <th>Bilangan Penghantaran</th>
+            <th>Peratusan</th>
+            <th>Tarikh Hantar</th>
+            <th>Status</th>
+            <th class="center-text">View</th>
+          </tr>
+        </thead>
+        <tbody id="directory-table-body-rows">
+           </tbody>
+      </table>
+    </div>
+    
+    <div class="pagination-footer-bar">
+      <span id="pagination-status-descriptor-label">Showing page metrics data records profile 0-0 of 0</span>
+      <div class="pagination-buttons-nav">
+        <button class="btn-pagination-control" id="btn-page-prev" onclick="changeDirectoryPageStep(-1)">
+          <span class="material-symbols-outlined">chevron_left</span>
+        </button>
+        <button class="btn-pagination-control" id="btn-page-next" onclick="changeDirectoryPageStep(1)">
+          <span class="material-symbols-outlined">chevron_right</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+</div>

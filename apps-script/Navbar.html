@@ -1,0 +1,26 @@
+<header class="top-navbar">
+  <div class="nav-left">
+    <h2 id="current-view-title">Dashboard Rumusan eRPH</h2>
+  </div>
+  <div class="nav-right">
+    <button class="nav-icon-btn" onclick="toggleNotifications()" title="Notifications alerts">
+      <span class="material-symbols-outlined">notifications</span>
+      <span class="notification-badge hidden" id="global-alert-badge"></span>
+    </button>
+    <button class="nav-icon-btn" onclick="toggleSystemThemeMode()" title="Toggle Interface Skin Layer Type">
+      <span class="material-symbols-outlined" id="theme-toggle-icon">dark_mode</span>
+    </button>
+    <div class="vertical-divider"></div>
+    <div class="user-profile-widget" style="display: flex; align-items: center; padding-left: 8px;">
+      <span class="profile-email-label" style="font-size: 13px; color: #64748b; font-weight: 400;"><?= userEmail ?></span>
+    </div>
+  </div>
+</header>
+
+<div id="notification-dropdown-panel" class="dropdown-overlay hidden">
+  <h4>System Compliance Action Items</h4>
+  <hr class="divider">
+  <div id="notification-items-list">
+     <p class="empty-state-text">System processing dataset analytics completed cleanly.</p>
+  </div>
+</div>

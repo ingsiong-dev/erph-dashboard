@@ -1,0 +1,697 @@
+<script>
+/**
+ * eRPH Frontend Execution Core Infrastructure Engine Engine
+ */
+
+// Global App Reactive State Engine System Parameters Object Module
+let APP_STATE = {
+  masterData: null,
+  filteredTeachers: [],
+  pagination: { currentPage: 1, pageSize: 20 },
+  charts: {},
+  currentTheme: 'light',
+  totalWeeks: 26 // <-- Single source of truth. Updated from backend payload on every sync.
+};
+
+/**
+ * Global Initialization Routine Lifecycle Node Point Context Execution Hook
+ */
+document.addEventListener("DOMContentLoaded", function() {
+  fetchSystemAnalyticsDatasetPayload(false);
+});
+
+/**
+ * Queries structural backend API engine payload elements using clean promise wrappers
+ */
+function fetchSystemAnalyticsDatasetPayload(forceRefresh = false) {
+  document.getElementById('loading-spinner').classList.remove('hidden');
+  
+  google.script.run
+    .withSuccessHandler(function(response) {
+      APP_STATE.masterData = response;
+      APP_STATE.filteredTeachers = [...response.teachers];
+
+      // ✅ FIX: Read totalWeeks from backend payload so the frontend always
+      // matches the backend's calculated week number. Falls back to 26 if
+      // the key is missing (e.g. old cached payload).
+      APP_STATE.totalWeeks = response.totalWeeks || 26;
+      
+      // Compute global components interface views structural dependencies updates
+      updateGlobalDashboardKpiMetrics();
+      generateCoreDashboardVisualizationCharts();
+      renderDirectoryTableDomDataElements();
+      buildComplianceAlertNotificationsSystem();
+      
+      // Update Sync Tracking Timestamp Elements Labels
+      document.getElementById('cache-timestamp-label').innerText = `Synced: ${response.lastUpdated}`;
+      
+      // Initialize Context State UI view
+      document.getElementById('loading-spinner').classList.add('hidden');
+      switchActiveView('dashboard');
+    })
+    .withFailureHandler(function(error) {
+      alert("Critical Connection Failure to Backend Architecture Services: " + error.toString());
+    })
+    .getDashboardMasterData(forceRefresh);
+}
+
+function forceSystemDataRefresh() {
+  fetchSystemAnalyticsDatasetPayload(true);
+}
+
+/**
+ * Handles Tab-Based Interface View Navigation Switching
+ */
+function switchActiveView(targetViewId) {
+  // Hide all screens
+  document.querySelectorAll('.app-view').forEach(view => view.classList.add('hidden'));
+  document.querySelectorAll('.menu-link').forEach(lnk => lnk.classList.remove('active'));
+  
+  // Activate selected targets components structural elements frame matching ID nodes elements
+  const targetDomNode = document.getElementById(`view-${targetViewId}`);
+  if (targetDomNode) {
+    targetDomNode.classList.remove('hidden');
+    const sideMenuLink = document.querySelector(`.menu-link[data-target="${targetViewId}"]`);
+    if(sideMenuLink) sideMenuLink.classList.add('active');
+    
+    const titleHeader = document.getElementById('current-view-title');
+    titleHeader.style.display = "block"; 
+    titleHeader.innerText = "Dashboard Rumusan eRPH";
+  }
+  
+  // Custom view hook allocations
+  if (targetViewId === 'analytics') {
+     generateAdvancedAnalyticsWorkspaceCharts();
+  }
+}
+
+/**
+ * Evaluates Metrics Analytics Aggregations onto KPI Cards Component elements layout nodes elements
+ */
+function updateGlobalDashboardKpiMetrics() {
+  const data = APP_STATE.masterData;
+  if (!data || !data.teachers.length) return;
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  const totalTeachers = data.teachers.length;
+  let totalSubmissions = 0;
+  let runningSumSubmissions = 0;
+  let fullSubmittersCount = 0;
+  let zeroSubmittersCount = 0;
+  let chronologicalLatestRecord = null;
+
+  data.teachers.forEach(teacher => {
+    runningSumSubmissions += teacher.totalSubmission;
+    totalSubmissions += teacher.submissions.length;
+    
+    if (teacher.totalSubmission === TW) fullSubmittersCount++;   // ✅ was hardcoded 26
+    if (teacher.totalSubmission === 0) zeroSubmittersCount++;
+
+    teacher.submissions.forEach(sub => {
+       if (!chronologicalLatestRecord || sub.timestamp > chronologicalLatestRecord.timestamp) {
+         chronologicalLatestRecord = { ...sub, teacherName: teacher.name };
+       }
+    });
+  });
+
+  const avgSubmissionRate = (runningSumSubmissions / totalTeachers).toFixed(1);
+  const aggregateCompletionRatePercent = Math.round((runningSumSubmissions / (totalTeachers * TW)) * 100); // ✅ was * 26
+
+  // Set Content Value Data Strings
+  document.getElementById('metric-total-teachers').innerText = totalTeachers;
+  document.getElementById('metric-total-submissions').innerText = totalSubmissions;
+  document.getElementById('metric-avg-submission').innerText = `${avgSubmissionRate} / ${TW}`;   // ✅ was / 26
+  document.getElementById('metric-completion-rate').innerText = `${aggregateCompletionRatePercent}%`;
+  
+  document.getElementById('metric-full-submitters').innerText = `${fullSubmittersCount} Guru`;
+  document.getElementById('metric-missing-submitters').innerText = `${zeroSubmittersCount} Guru`;
+  
+  document.getElementById('metric-newest-sub').innerText = chronologicalLatestRecord ? 
+    `Wk ${chronologicalLatestRecord.week} - ${chronologicalLatestRecord.teacherName}` : "No Logs Recorded";
+
+  // Handle Recent Dynamic Table Log Streams Frame Rendering Content Updates
+  let allFlattenedSubs = [];
+  data.teachers.forEach(t => {
+     t.submissions.forEach(s => { allFlattenedSubs.push({ ...s, teacherName: t.name }); });
+  });
+  allFlattenedSubs.sort((a,b) => b.timestamp - a.timestamp);
+  
+  const activityTableBody = document.getElementById('dashboard-recent-activity-rows');
+  activityTableBody.innerHTML = "";
+  
+  const maximumActivityRowOutputLimits = allFlattenedSubs.slice(0, 8);
+  if(maximumActivityRowOutputLimits.length === 0) {
+     activityTableBody.innerHTML = `<tr><td colspan="5" class="center-text">No active operational uploads found.</td></tr>`;
+  } else {
+    maximumActivityRowOutputLimits.forEach(row => {
+       const tr = document.createElement('tr');
+       tr.innerHTML = `
+         <td><strong>${row.teacherName}</strong></td>
+         <td>Week Allocation Code: ${row.week}</td>
+         <td>${row.subject || "General Unit Track"}</td>
+         <td>${row.formattedDate}</td>
+         <td><span class="status-pill completed">${row.status || 'Verified Checked'}</span></td>
+       `;
+       activityTableBody.appendChild(tr);
+    });
+  }
+}
+
+/**
+ * Primary Core Dashboard Data Visualizations Chart Engine (Chart.js Engine Integration Framework)
+ */
+function generateCoreDashboardVisualizationCharts() {
+  const data = APP_STATE.masterData;
+  if (!data) return;
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  if (APP_STATE.charts.dashBar) APP_STATE.charts.dashBar.destroy();
+  if (APP_STATE.charts.dashPie) APP_STATE.charts.dashPie.destroy();
+  if (APP_STATE.charts.dashLine) APP_STATE.charts.dashLine.destroy();
+
+  let bucketsSpreadDist = { "0-5": 0, "6-10": 0, "11-15": 0, "16-20": 0, [`21-${TW}`]: 0 }; // ✅ last bucket label is dynamic
+  let completedSplit = { completed: 0, incomplete: 0 };
+  let trackingWeeklyAccumulatorsMatrix = Array(TW).fill(0); // ✅ was Array(26)
+
+  data.teachers.forEach(t => {
+     const subCount = t.totalSubmission;
+     if(subCount <= 5) bucketsSpreadDist["0-5"]++;
+     else if(subCount <= 10) bucketsSpreadDist["6-10"]++;
+     else if(subCount <= 15) bucketsSpreadDist["11-15"]++;
+     else if(subCount <= 20) bucketsSpreadDist["16-20"]++;
+     else bucketsSpreadDist[`21-${TW}`]++;
+
+     if(subCount === TW) completedSplit.completed++;  // ✅ was === 26
+     else completedSplit.incomplete++;
+
+     t.weekMatrix.forEach(wkNum => {
+        if(wkNum >= 1 && wkNum <= TW) { trackingWeeklyAccumulatorsMatrix[wkNum - 1]++; } // ✅ was <= 26
+     });
+  });
+
+  // Bar Chart
+  const ctxBar = document.getElementById('chartDistributionBar').getContext('2d');
+  APP_STATE.charts.dashBar = new Chart(ctxBar, {
+    type: 'bar',
+    data: {
+      labels: Object.keys(bucketsSpreadDist),
+      datasets: [{
+        label: 'Teacher Counts',
+        data: Object.values(bucketsSpreadDist),
+        backgroundColor: '#1a73e8',
+        borderRadius: 6
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  // Pie Chart — label now shows actual week count
+  const ctxPie = document.getElementById('chartCompletionPie').getContext('2d');
+  APP_STATE.charts.dashPie = new Chart(ctxPie, {
+     type: 'doughnut',
+     data: {
+       labels: [`Fully Compliant (${TW} Wks)`, 'Incomplete Target Scope'], // ✅ was hardcoded 26
+       datasets: [{
+          data: [completedSplit.completed, completedSplit.incomplete],
+          backgroundColor: ['#34a853', '#ea4335']
+       }]
+     },
+     options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  // Line Chart — week axis is dynamic
+  const ctxLine = document.getElementById('chartWeeklyLine').getContext('2d');
+  APP_STATE.charts.dashLine = new Chart(ctxLine, {
+     type: 'line',
+     data: {
+        labels: Array.from({length: TW}, (_, i) => `Wk ${i+1}`), // ✅ was hardcoded length 26
+        datasets: [{
+           label: 'Total Submissions per Week',
+           data: trackingWeeklyAccumulatorsMatrix,
+           borderColor: '#a142f4',
+           backgroundColor: 'rgba(161, 66, 244, 0.1)',
+           fill: true,
+           tension: 0.2
+        }]
+     },
+     options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+/**
+ * Core Directory Execution Sorting Filter & Pagination Render Matrix System Module
+ */
+function executeDirectoryQueryEvaluation() {
+  if (!APP_STATE.masterData) return;
+
+  const TW = APP_STATE.totalWeeks;
+  const searchQuery = document.getElementById('directory-search-box').value.toLowerCase().trim();
+  const filterStatus = document.getElementById('filter-compliance-status').value;
+  const sortingRule = document.getElementById('filter-sorting-rule').value;
+
+  let results = [...APP_STATE.masterData.teachers];
+
+  if (searchQuery) {
+   results = results.filter(t => {
+     const name     = String(t.name  || "").toLowerCase();
+     const email    = String(t.email || "").toLowerCase();
+     const subjects = Array.isArray(t.subjects) ? t.subjects : [];
+     return name.includes(searchQuery) ||
+            email.includes(searchQuery) ||
+            subjects.some(s => String(s).toLowerCase().includes(searchQuery));
+   });
+}
+
+  if (filterStatus !== 'ALL') {
+     if (filterStatus === 'Completed') results = results.filter(t => t.totalSubmission === TW);       // ✅ was === 26
+     else if (filterStatus === 'Incomplete') results = results.filter(t => t.totalSubmission < TW);   // ✅ was < 26
+     else if (filterStatus === 'BELOW_50') results = results.filter(t => t.percentage < 50);
+     else if (filterStatus === 'NO_SUBMISSION') results = results.filter(t => t.totalSubmission === 0);
+  }
+
+  if (sortingRule === 'ALPHA_ASC') {
+     results.sort((a,b) => a.name.localeCompare(b.name));
+  } else if (sortingRule === 'SUB_DESC') {
+     results.sort((a,b) => b.totalSubmission - a.totalSubmission);
+  } else if (sortingRule === 'SUB_ASC') {
+     results.sort((a,b) => a.totalSubmission - b.totalSubmission);
+  }
+
+  APP_STATE.filteredTeachers = results;
+  APP_STATE.pagination.currentPage = 1;
+  renderDirectoryTableDomDataElements();
+}
+
+function renderDirectoryTableDomDataElements() {
+  const tbody = document.getElementById('directory-table-body-rows');
+  tbody.innerHTML = "";
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  const totalRecords = APP_STATE.filteredTeachers.length;
+  const pSize = APP_STATE.pagination.pageSize;
+  const currPage = APP_STATE.pagination.currentPage;
+  
+  const indexStartOffsetBoundary = (currPage - 1) * pSize;
+  const indexEndOffsetBoundary = Math.min(indexStartOffsetBoundary + pSize, totalRecords);
+
+  document.getElementById('pagination-status-descriptor-label').innerText = 
+    totalRecords > 0 ? `Showing page record metrics line references ${indexStartOffsetBoundary + 1}-${indexEndOffsetBoundary} of total ${totalRecords}` : "No matching tracking indexes matched bounds.";
+
+  const itemsSubsetToRender = APP_STATE.filteredTeachers.slice(indexStartOffsetBoundary, indexEndOffsetBoundary);
+
+  if (itemsSubsetToRender.length === 0) {
+     tbody.innerHTML = `<tr><td colspan="7" class="center-text empty-state-text">No faculty matching requirements logged inside database indexing frame parameters.</td></tr>`;
+     return;
+  }
+
+  itemsSubsetToRender.forEach(teacher => {
+     const tr = document.createElement('tr');
+     
+     let fillBarColorClass = "green";
+     if(teacher.percentage < 50) fillBarColorClass = "red";
+     else if(teacher.percentage < 100) fillBarColorClass = "orange";
+
+     let statusPillClass = "none";
+     if (teacher.status === 'Completed') statusPillClass = "completed";
+     else if (teacher.status === 'Almost Complete') statusPillClass = "almost";
+     else if (teacher.status === 'Behind Schedule') statusPillClass = "behind";
+
+     const avatarInitials = teacher.name.charAt(0);
+
+     tr.innerHTML = `
+       <td>
+          <div style="display:flex; align-items:center; gap:10px;">
+             <div class="avatar" style="background-color:#f1f3f4; color:#1a73e8; width:32px; height:32px; font-size:12px; font-weight:700; border-radius:50%; display:flex; align-items:center; justify-content:center;">${avatarInitials}</div>
+             <strong>${teacher.name}</strong>
+          </div>
+       </td>
+       <td><small>${teacher.email}</small></td>
+       <td><strong>${teacher.totalSubmission} / ${TW}</strong></td>
+       <td>
+          <div class="table-progressbar-container">
+             <div class="bar-track-outer">
+                <div class="bar-fill-inner ${fillBarColorClass}" style="width: ${teacher.percentage}%;"></div>
+             </div>
+             <span class="pct-txt">${teacher.percentage}%</span>
+          </div>
+       </td>
+       <td><span style="font-size:12px; color:#5f6368;">${teacher.lastSubmissionDate}</span></td>
+       <td><span class="status-pill ${statusPillClass}">${teacher.status}</span></td>
+       <td class="center-text">
+          <button class="nav-icon-btn" style="color:#1a73e8; margin:0 auto;" onclick="openDetailedTeacherProfileSummaryView('${teacher.email}')" title="Inspect Profile Metrics Records Log Array">
+             <span class="material-symbols-outlined">visibility</span>
+          </button>
+       </td>
+     `;
+     tbody.appendChild(tr);
+  });
+}
+
+function changeDirectoryPageStep(directionStepValue) {
+  const targetCalculatedStepIndex = APP_STATE.pagination.currentPage + directionStepValue;
+  const maxAllocatedPagesBounds = Math.ceil(APP_STATE.filteredTeachers.length / APP_STATE.pagination.pageSize) || 1;
+  
+  if (targetCalculatedStepIndex >= 1 && targetCalculatedStepIndex <= maxAllocatedPagesBounds) {
+     APP_STATE.pagination.currentPage = targetCalculatedStepIndex;
+     renderDirectoryTableDomDataElements();
+  }
+}
+
+/**
+ * Compiles Deep-Dive Teacher Submissions Profile Context Mapping Views Elements Objects
+ */
+function openDetailedTeacherProfileSummaryView(teacherEmail) {
+  const matchTeacher = APP_STATE.masterData.teachers.find(t => t.email === teacherEmail);
+  if (!matchTeacher) return;
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  switchActiveView('detail');
+  
+  document.getElementById('detail-avatar-placeholder').innerText = matchTeacher.name.charAt(0);
+  document.getElementById('detail-teacher-name').innerText = matchTeacher.name;
+  document.getElementById('detail-teacher-email').innerText = matchTeacher.email;
+  document.getElementById('detail-total-submissions').innerText = `${matchTeacher.totalSubmission} / ${TW} Unique Operational Weeks`; // ✅ was / 26
+  document.getElementById('detail-completion-percentage').innerText = `${matchTeacher.percentage}% Compliance Yield`;
+
+  const pillsContainer = document.getElementById('detail-subjects-pills-container');
+  pillsContainer.innerHTML = "";
+  if(matchTeacher.subjects.length === 0) {
+     pillsContainer.innerHTML = `<span class="subject-pill-tag">No Subject Specified</span>`;
+  } else {
+     matchTeacher.subjects.forEach(sb => {
+        const span = document.createElement('span');
+        span.className = "subject-pill-tag";
+        span.innerText = sb;
+        pillsContainer.appendChild(span);
+     });
+  }
+
+  // Timeline grid now loops up to TW, not hardcoded 26
+  const timelineGridWrapper = document.getElementById('detail-weeks-matrix-grid-timeline');
+  timelineGridWrapper.innerHTML = "";
+  
+  for(let i = 1; i <= TW; i++) { // ✅ was i <= 26
+     const isSubmitted = matchTeacher.weekMatrix.includes(i);
+     const cellNode = document.createElement('div');
+     
+     if (isSubmitted) {
+        cellNode.className = "timeline-cell-node submitted";
+        cellNode.innerHTML = `<span>Wk ${i}</span><span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>`;
+     } else {
+        cellNode.className = "timeline-cell-node missing";
+        cellNode.innerHTML = `<span>Wk ${i}</span><span class="material-symbols-outlined" style="font-size:16px;">cancel</span>`;
+     }
+     timelineGridWrapper.appendChild(cellNode);
+  }
+
+  const historyTbody = document.getElementById('detail-submission-history-rows-feed');
+  historyTbody.innerHTML = "";
+  
+  if (matchTeacher.submissions.length === 0) {
+     historyTbody.innerHTML = `<tr><td colspan="5" class="center-text empty-state-text">No physical upload objects elements found inside record stream history bounds.</td></tr>`;
+  } else {
+     matchTeacher.submissions.forEach(sub => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>Week Cycle Block Allocation: ${sub.week}</strong></td>
+          <td>${sub.subject || "Not Specified Curriculum Track"}</td>
+          <td>${sub.formattedDate}</td>
+          <td><span class="status-pill completed">${sub.status || 'Verified Completed'}</span></td>
+          <td class="center-text">
+             <a href="${sub.driveUrl}" target="_blank" class="nav-icon-btn" style="color:#137333; text-decoration:none; margin:0 auto;" title="Launch Google Drive Source Object File Asset Securely">
+                <span class="material-symbols-outlined">cloud_open</span>
+             </a>
+          </td>
+        `;
+        historyTbody.appendChild(tr);
+     });
+  }
+}
+
+/**
+ * Builds Advanced Multi-Dimensional Analytical Calculations System Module
+ */
+function generateAdvancedAnalyticsWorkspaceCharts() {
+  const data = APP_STATE.masterData;
+  if (!data) return;
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  if (APP_STATE.charts.anTop) APP_STATE.charts.anTop.destroy();
+  if (APP_STATE.charts.anBottom) APP_STATE.charts.anBottom.destroy();
+  if (APP_STATE.charts.anSubject) APP_STATE.charts.anSubject.destroy();
+
+  let teachersCopy = [...data.teachers];
+  
+  teachersCopy.sort((a,b) => b.totalSubmission - a.totalSubmission);
+  const topTen = teachersCopy.slice(0, 10);
+
+  teachersCopy.sort((a,b) => a.totalSubmission - b.totalSubmission);
+  const bottomTen = teachersCopy.slice(0, 10);
+
+  let subjectsTrackingMetricsMap = {};
+  data.teachers.forEach(t => {
+     t.submissions.forEach(s => {
+        if(s.subject) {
+           if(!subjectsTrackingMetricsMap[s.subject]) {
+              subjectsTrackingMetricsMap[s.subject] = { totalWks: new Set(), totalSubsCount: 0, distinctTeachers: new Set() };
+           }
+           subjectsTrackingMetricsMap[s.subject].totalSubsCount++;
+           subjectsTrackingMetricsMap[s.subject].distinctTeachers.add(t.email);
+           if(s.week >= 1 && s.week <= TW) subjectsTrackingMetricsMap[s.subject].totalWks.add(`${t.email}_${s.week}`); // ✅ was <= 26
+        }
+     });
+  });
+
+  let subjectLabels = Object.keys(subjectsTrackingMetricsMap);
+  let subjectAverages = subjectLabels.map(subKey => {
+      const metricObj = subjectsTrackingMetricsMap[subKey];
+      const teachersCountInSub = metricObj.distinctTeachers.size || 1;
+      return (metricObj.totalWks.size / teachersCountInSub).toFixed(1);
+  });
+
+  const ctxTop = document.getElementById('chartAnalyticsTopTenBar').getContext('2d');
+  APP_STATE.charts.anTop = new Chart(ctxTop, {
+     type: 'bar',
+     data: {
+        labels: topTen.map(t => t.name.substring(0, 12) + "..."),
+        datasets: [{ label: 'Submissions Rate Level Balance', data: topTen.map(t => t.totalSubmission), backgroundColor: '#34a853' }]
+     },
+     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+  });
+
+  const ctxBot = document.getElementById('chartAnalyticsBottomTenBar').getContext('2d');
+  APP_STATE.charts.anBottom = new Chart(ctxBot, {
+     type: 'bar',
+     data: {
+        labels: bottomTen.map(t => t.name.substring(0, 12) + "..."),
+        datasets: [{ label: 'Submissions Rate Level Balance', data: bottomTen.map(t => t.totalSubmission), backgroundColor: '#ea4335' }]
+     },
+     options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false }
+  });
+
+  const ctxSub = document.getElementById('chartAnalyticsSubjectBar').getContext('2d');
+  APP_STATE.charts.anSubject = new Chart(ctxSub, {
+     type: 'bar',
+     data: {
+        labels: subjectLabels,
+        datasets: [{ label: 'Mean Structural Cycle Completion Rates Volume Track Index Points', data: subjectAverages, backgroundColor: '#12b5cb' }]
+     },
+     options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  const heatmapBody = document.getElementById('analytics-heatmap-matrix-table-body');
+  heatmapBody.innerHTML = "";
+  
+  if(subjectLabels.length === 0) {
+     heatmapBody.innerHTML = `<tr><td colspan="3" class="center-text">No curriculum tracks metrics matched data structures.</td></tr>`;
+  } else {
+     subjectLabels.forEach((subLabel, idx) => {
+        const rowDataMetric = subjectsTrackingMetricsMap[subLabel];
+        const computedMeanRatioPct = Math.round(((subjectAverages[idx]) / TW) * 100); // ✅ was / 26
+        
+        let densityIntensityColorBackgroundStyleHex = "rgba(52, 168, 83, 0.1)";
+        if(computedMeanRatioPct < 40) densityIntensityColorBackgroundStyleHex = "rgba(234, 67, 53, 0.15)";
+        else if(computedMeanRatioPct < 85) densityIntensityColorBackgroundStyleHex = "rgba(249, 171, 0, 0.15)";
+
+        const tr = document.createElement('tr');
+        tr.style.backgroundColor = densityIntensityColorBackgroundStyleHex;
+        tr.innerHTML = `
+           <td><strong>${subLabel}</strong></td>
+           <td>${rowDataMetric.totalSubsCount} Upload Events Logged</td>
+           <td class="heatmap-cell-density">${computedMeanRatioPct}% Performance Metric Yield</td>
+        `;
+        heatmapBody.appendChild(tr);
+     });
+  }
+}
+
+/**
+ * Realtime Notification Warning Rules Evaluation Engine Compiler Module
+ */
+function buildComplianceAlertNotificationsSystem() {
+  const data = APP_STATE.masterData;
+  if(!data) return;
+
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  let alertNotificationsArrayCollectionList = [];
+  
+  data.teachers.forEach(t => {
+     if (t.totalSubmission === 0) {
+        alertNotificationsArrayCollectionList.push(`Critical Alert Notice: Faculty Instructor <strong>${t.name}</strong> displays absolute zero (0) current active calendar submission entries traces.`);
+     }
+     if ((TW - t.totalSubmission) >= 5 && t.totalSubmission > 0) { // ✅ was 26 - t.totalSubmission
+        alertNotificationsArrayCollectionList.push(`Compliance Warning Deviation: Staff Member <strong>${t.name}</strong> lags behind baseline scheduled metrics requirements by more than 5 missed lifecycle tracking nodes.`);
+     }
+  });
+
+  const badgeElement = document.getElementById('global-alert-badge');
+  const alertItemsContainerBox = document.getElementById('notification-items-list');
+  
+  alertItemsContainerBox.innerHTML = "";
+  
+  if (alertNotificationsArrayCollectionList.length > 0) {
+     badgeElement.classList.remove('hidden');
+     alertNotificationsArrayCollectionList.slice(0, 6).forEach(alertTextItemString => {
+        const div = document.createElement('div');
+        div.className = "alert-row-item text-error";
+        div.innerHTML = `<span class="material-symbols-outlined" style="font-size:14px; vertical-align:middle; margin-right:6px;">warning</span>${alertTextItemString}`;
+        alertItemsContainerBox.appendChild(div);
+     });
+  } else {
+     badgeElement.classList.add('hidden');
+     alertItemsContainerBox.innerHTML = `<p class="empty-state-text">All active systems matching operation conditions status guidelines are performing correctly.</p>`;
+  }
+}
+
+function toggleNotifications() {
+  document.getElementById('notification-dropdown-panel').classList.toggle('hidden');
+}
+
+/**
+ * Alternates UI Interface Contrast Rendering Skin Modality Matrix Layout Rules Layers
+ */
+function toggleSystemThemeMode() {
+  const currentAttrSkinMode = document.body.getAttribute('data-theme');
+  const iconNode = document.getElementById('theme-toggle-icon');
+  
+  if (currentAttrSkinMode === 'dark') {
+     document.body.removeAttribute('data-theme');
+     iconNode.innerText = "dark_mode";
+     APP_STATE.currentTheme = 'light';
+  } else {
+     document.body.setAttribute('data-theme', 'dark');
+     iconNode.innerText = "light_mode";
+     APP_STATE.currentTheme = 'dark';
+  }
+}
+
+/**
+ * Enterprise Modern Client-Side Data Export Pipeline Router Architecture Execution Layer System
+ */
+function executeDataExportPipeline(reportTypeConfigurationKey, requestedFileFormatEncodingType) {
+  if (!APP_STATE.masterData) { alert("Operational dataset structures parameters mismatch. Cancel exporting pipeline run steps sequence."); return; }
+  
+  const TW = APP_STATE.totalWeeks; // ✅ Use dynamic week number throughout
+
+  let structuralExportRowsDatasetPayload = [];
+  let generatedTargetFilenameString = `eRPH_Report_Export_${new Date().getTime()}`;
+
+  if (reportTypeConfigurationKey === 'FACULTY_SUMMARY') {
+     generatedTargetFilenameString = `eRPH_Faculty_Master_Summary_Compliance_Audit_Sheet`;
+     structuralExportRowsDatasetPayload = APP_STATE.masterData.teachers.map(t => ({
+        "Teacher Name Field": t.name,
+        "Registered Email Vector Address": t.email,
+        "Validated Operational Weeks Logged": t.totalSubmission,
+        "Calculated Yield Target Percentage Rate": `${t.percentage}%`,
+        "Terminal System Upload Date Log": t.lastSubmissionDate,
+        "Compliance Health Classification Rating Status Group": t.status
+     }));
+  } 
+  else if (reportTypeConfigurationKey === 'MISSING_COMPLIANCE') {
+     generatedTargetFilenameString = `eRPH_Critical_Delinquent_Missing_Submissions_Attention_List`;
+     structuralExportRowsDatasetPayload = APP_STATE.masterData.teachers
+       .filter(t => t.totalSubmission < TW)  // ✅ was < 26
+       .map(t => {
+          let structuralMissingWeeksIndexTracingArrayCollectionGroupList = [];
+          for(let i = 1; i <= TW; i++) { // ✅ was i <= 26
+            if(!t.weekMatrix.includes(i)) structuralMissingWeeksIndexTracingArrayCollectionGroupList.push(i);
+          }
+          return {
+             "Teacher Delinquent Profile": t.name,
+             "Email Destination Target Link": t.email,
+             "Total Validated Weeks Logs Count": t.totalSubmission,
+             "Total Structural Calendar Units Deficit Gap Size": (TW - t.totalSubmission), // ✅ was 26 - t.totalSubmission
+             "Explicit Missing Week Sequence Track Identification Numbers List Array": structuralMissingWeeksIndexTracingArrayCollectionGroupList.join(", ")
+          };
+       });
+  } 
+  else if (reportTypeConfigurationKey === 'SCHOOL_LEDGER') {
+     generatedTargetFilenameString = `eRPH_Comprehensive_Unified_School_System_Raw_Audit_Ledger`;
+     APP_STATE.masterData.teachers.forEach(t => {
+        t.submissions.forEach(s => {
+           structuralExportRowsDatasetPayload.push({
+              "Instructor Profile Identifier Name": t.name,
+              "Google Access Node User Identity Email": t.email,
+              "Calendar Allocation Metric Target Week No": s.week,
+              "Assigned Active Subject Course Curricula Title": s.subject || "General Track Entry Link",
+              "Database Registration System Entry Timestamp": s.formattedDate,
+              "Verification Direct Cloud URL Access Asset Storage Node Link": s.driveUrl,
+              "Auditor Inspection Verification Verdict Status Stamp Code": s.status || "Checked Clear Validated"
+           });
+        });
+     });
+  }
+
+  if (requestedFileFormatEncodingType === 'CSV') {
+     convertDataPayloadToCsvClientStreamAndDownloadAsset(structuralExportRowsDatasetPayload, generatedTargetFilenameString);
+  } else if (requestedFileFormatEncodingType === 'XLSX') {
+     convertDataPayloadToXlsxWorkbookStreamAndDownloadAsset(structuralExportRowsDatasetPayload, generatedTargetFilenameString);
+  }
+}
+
+function convertDataPayloadToCsvClientStreamAndDownloadAsset(jsonArrayDataset, outputFilenameLabel) {
+  if (jsonArrayDataset.length === 0) { alert("Target export data compilation array layer contains zero matching rows entries."); return; }
+  
+  const headersExtractionKeys = Object.keys(jsonArrayDataset[0]);
+  const csvRowsStringsContainerBuilderList = [headersExtractionKeys.join(",")];
+
+  jsonArrayDataset.forEach(rowObjectItemInstance => {
+     const valuesMappingStringsList = headersExtractionKeys.map(headerKey => {
+        const unescapedStringRawValue = rowObjectItemInstance[headerKey] === null ? "" : rowObjectItemInstance[headerKey].toString();
+        const escapedFailsafeSanitizedValue = unescapedStringRawValue.replace(/"/g, '""');
+        return `"${escapedFailsafeSanitizedValue}"`;
+     });
+     csvRowsStringsContainerBuilderList.push(valuesMappingStringsList.join(","));
+  });
+
+  const fullCompiledCsvStringBlobBufferContentPayload = csvRowsStringsContainerBuilderList.join("\n");
+  const blobDataBytesContainerInstanceElementNode = new Blob([fullCompiledCsvStringBlobBufferContentPayload], { type: 'text/csv;charset=utf-8;' });
+  
+  const downloadAnchorElementTriggerNodeInstance = document.createElement("a");
+  const virtualBlobObjectBlobStreamUrlReferencePointer = URL.createObjectURL(blobDataBytesContainerInstanceElementNode);
+  
+  downloadAnchorElementTriggerNodeInstance.setAttribute("href", virtualBlobObjectBlobStreamUrlReferencePointer);
+  downloadAnchorElementTriggerNodeInstance.setAttribute("download", `${outputFilenameLabel}.csv`);
+  downloadAnchorElementTriggerNodeInstance.style.visibility = 'hidden';
+  
+  document.body.appendChild(downloadAnchorElementTriggerNodeInstance);
+  downloadAnchorElementTriggerNodeInstance.click();
+  document.body.removeChild(downloadAnchorElementTriggerNodeInstance);
+}
+
+function convertDataPayloadToXlsxWorkbookStreamAndDownloadAsset(jsonArrayDataset, outputFilenameLabel) {
+  if (jsonArrayDataset.length === 0) { alert("Target data matrix rows records container trace index point size matches null baseline bounds."); return; }
+  
+  const worksheetObjectModuleReferenceNodeInstance = XLSX.utils.json_to_sheet(jsonArrayDataset);
+  const workbookContainerModuleInstanceNode = XLSX.utils.book_new();
+  
+  XLSX.utils.book_append_sheet(workbookContainerModuleInstanceNode, worksheetObjectModuleReferenceNodeInstance, "Audit Metrics Data Export");
+  XLSX.writeFile(workbookContainerModuleInstanceNode, `${outputFilenameLabel}.xlsx`);
+}
+</script>

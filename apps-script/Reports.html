@@ -1,0 +1,43 @@
+<div class="reports-generation-workspace-panel">
+  
+  <div class="reporting-options-grid-layout">
+    
+    <div class="report-action-selection-card">
+       <div class="card-icon-illustration-badge blue">
+          <span class="material-symbols-outlined">badge</span>
+       </div>
+       <h3>Laporan Induk e-RPH</h3>
+       <p>Laporan status, peratusan, dan tarikh akhir hantar e-RPH guru.</p>
+       <div class="report-action-buttons-group-row">
+          <button class="btn-report-download action-csv" onclick="executeDataExportPipeline('FACULTY_SUMMARY', 'CSV')">Export CSV</button>
+          <button class="btn-report-download action-xlsx" onclick="executeDataExportPipeline('FACULTY_SUMMARY', 'XLSX')">Export Excel</button>
+       </div>
+    </div>
+
+    <div class="report-action-selection-card">
+       <div class="card-icon-illustration-badge red">
+          <span class="material-symbols-outlined">running_with_errors</span>
+       </div>
+       <h3>Senarai Guru Belum Hantar e-RPH</h3>
+       <p>Status kegagalan penghantaran e-RPH guru.</p>
+       <div class="report-action-buttons-group-row">
+          <button class="btn-report-download action-csv" onclick="executeDataExportPipeline('MISSING_COMPLIANCE', 'CSV')">Export CSV</button>
+          <button class="btn-report-download action-xlsx" onclick="executeDataExportPipeline('MISSING_COMPLIANCE', 'XLSX')">Export Excel</button>
+       </div>
+    </div>
+
+    <div class="report-action-selection-card">
+       <div class="card-icon-illustration-badge green">
+          <span class="material-symbols-outlined">table_chart</span>
+       </div>
+       <h3>Rumusan e-RPH Bersepadu</h3>
+       <p>Ekstrak Data Pelaporan</p>
+       <div class="report-action-buttons-group-row">
+          <button class="btn-report-download action-csv" onclick="executeDataExportPipeline('SCHOOL_LEDGER', 'CSV')">Export CSV</button>
+          <button class="btn-report-download action-xlsx" onclick="executeDataExportPipeline('SCHOOL_LEDGER', 'XLSX')">Export Excel</button>
+       </div>
+    </div>
+
+  </div>
+
+</div>

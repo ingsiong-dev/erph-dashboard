@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Dashboard Rumusan eRPH</title>
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
+  iframe { display: block; border: 0; width: 100%; height: 100%; }
+
+  /* Loading state, hidden as soon as the app iframe reports load. */
+  #boot {
+    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px; background: #fff; z-index: 10;
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #5f6368;
+    transition: opacity .25s ease;
+  }
+  #boot.done { opacity: 0; pointer-events: none; }
+  .spinner {
+    width: 34px; height: 34px; border: 3px solid #e0e0e0; border-top-color: #1a73e8;
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="boot"><div class="spinner"></div><div>Loading eRPH dashboard&hellip;</div></div>
+
+<iframe id="app" title="Dashboard Rumusan eRPH" src="about:blank"
+        allow="clipboard-write; camera; microphone; geolocation"></iframe>
+
+<script>
+  /* Live web app URL (version 58 deployment, anonymous access). */
+  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbxmx8KXaam55fnjnEMCVr-p_kl9m-5fI64a3YrFphgzF1pEeNF50Pjn6THIY3_XIKan/exec';
+
+  var frame = document.getElementById('app');
+  var boot  = document.getElementById('boot');
+
+  // Optional override for testing:  index.html?exec=<other /exec URL>
+  var q = new URLSearchParams(location.search);
+  var base = q.get('exec') || EXEC_URL;
+
+  // Forward any extra query parameters through to the web app.
+  q.delete('exec');
+  var qs = q.toString();
+
+  frame.addEventListener('load', function () { boot.classList.add('done'); });
+  frame.src = base + (qs ? (base.indexOf('?') === -1 ? '?' : '&') + qs : '');
+
+  // Safety net: never leave the spinner up forever.
+  setTimeout(function () { boot.classList.add('done'); }, 8000);
+</script>
+
+</body>
+</html>

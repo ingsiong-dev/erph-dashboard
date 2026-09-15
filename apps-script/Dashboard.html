@@ -1,0 +1,95 @@
+<div class="dashboard-content-grid">
+  
+  <div class="kpi-cards-grid">
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Jumlah Guru</span>
+        <span class="material-symbols-outlined icon blue">group</span>
+      </div>
+      <h3 id="metric-total-teachers" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Jumlah Disemak</span>
+        <span class="material-symbols-outlined icon green">inventory</span>
+      </div>
+      <h3 id="metric-total-submissions" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Nisbah Penghantaran</span>
+        <span class="material-symbols-outlined icon purple">stacked_bar_chart</span>
+      </div>
+      <h3 id="metric-avg-submission" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Peratus Penghantaran</span>
+        <span class="material-symbols-outlined icon orange">bolt</span>
+      </div>
+      <h3 id="metric-completion-rate" class="kpi-value">-</h3>
+    </div>
+  </div>
+
+  <div class="kpi-cards-grid secondary">
+    <div class="kpi-card small">
+      <p class="lbl">100% Compliant Status</p>
+      <h4 id="metric-full-submitters">-</h4>
+    </div>
+    <div class="kpi-card small">
+      <p class="lbl">Zero Submissions Logged</p>
+      <h4 id="metric-missing-submitters" class="text-error">-</h4>
+    </div>
+    <div class="kpi-card small">
+      <p class="lbl">Latest System Upload Action</p>
+      <h4 id="metric-newest-sub" style="font-size:12px; white-space:nowrap; text-overflow:ellipsis; overflow:hidden;">-</h4>
+    </div>
+  </div>
+
+  <div class="dashboard-charts-row">
+    <div class="chart-card-wrapper flex-2">
+      <h3>Submission Level</h3>
+      <div class="chart-canvas-container">
+        <canvas id="chartDistributionBar"></canvas>
+      </div>
+    </div>
+    <div class="chart-card-wrapper flex-1">
+      <h3>School Completion</h3>
+      <div class="chart-canvas-container">
+        <canvas id="chartCompletionPie"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-charts-row">
+    <div class="chart-card-wrapper flex-3">
+      <h3>Weekly Progression Curve</h3>
+      <div class="chart-canvas-container extended">
+        <canvas id="chartWeeklyLine"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="table-container-card">
+    <div class="table-card-header">
+      <h3>Live Activity Feed</h3>
+    </div>
+    <div class="table-responsive-wrapper">
+      <table class="saas-data-table">
+        <thead>
+          <tr>
+            <th>Nama Guru</th>
+            <th>Minggu</th>
+            <th>Subjek</th>
+            <th>Masa</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody id="dashboard-recent-activity-rows">
+          <tr><td colspan="5" class="center-text">Processing master activities matrix metrics data stream.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
