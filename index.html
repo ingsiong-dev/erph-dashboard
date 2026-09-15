@@ -25,13 +25,15 @@
 </head>
 <body>
 
-<div id="boot"><div class="spinner"></div><div>Loading eRPH dashboard&hellip;</div></div>
+<div id="boot"><div class="spinner"></div><div>Memuatkan Portal Guru Data&hellip;</div></div>
 
-<iframe id="app" title="Dashboard Rumusan eRPH" src="about:blank"
+<iframe id="app" title="Portal Guru Data" src="about:blank"
         allow="clipboard-write; camera; microphone; geolocation"></iframe>
 
 <script>
-  /* Live web app URL (version 58 deployment, anonymous access). */
+  /* Live web app URL - the same deployment ID as the direct Google link, so this
+     page and the Google link always show the same app. Anonymous access.
+     Changing what appears here requires an Apps Script deploy, not a GitHub push. */
   var EXEC_URL = 'https://script.google.com/macros/s/AKfycbxmx8KXaam55fnjnEMCVr-p_kl9m-5fI64a3YrFphgzF1pEeNF50Pjn6THIY3_XIKan/exec';
 
   var frame = document.getElementById('app');
