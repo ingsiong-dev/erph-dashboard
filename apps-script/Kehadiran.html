@@ -1,3 +1,41 @@
+<style>
+  /* Compact "purata kehadiran" chart grid. These mirror the charts the user built
+     by hand on the 'Graf kehadiran' tab, so they are deliberately small: the big
+     monthly chart above stays the headline, these are for scanning. */
+  .kh-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+    gap: 14px;
+    padding: 0 20px 18px 20px;
+  }
+  .kh-mini {
+    border: 1px solid #e8eaed;
+    border-radius: 10px;
+    background: #fff;
+    padding: 10px 12px 4px 12px;
+  }
+  .kh-mini h4 {
+    margin: 0 0 8px 0;
+    font-size: 12px;
+    font-weight: 500;
+    color: #5f6368;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+  }
+  .kh-mini h4 .kh-mini-avg { color: #1a73e8; font-weight: 600; white-space: nowrap; }
+  .kh-mini-canvas { position: relative; height: 132px; }
+  .kh-note { padding: 0 20px 16px 20px; margin: 0; font-size: 11px; color: #80868b; }
+  .kh-full-details > summary {
+    cursor: pointer;
+    padding: 14px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    color: #3c4043;
+  }
+</style>
+
 <div class="dashboard-content-grid">
 
   <div class="kpi-cards-grid">
@@ -31,6 +69,7 @@
     </div>
   </div>
 
+  <!-- Headline: full size, unchanged -->
   <div class="dashboard-charts-row">
     <div class="chart-card-wrapper flex-3">
       <h3>Peratus Kehadiran Bulanan <span id="kh-year-chart"></span></h3>
@@ -40,37 +79,65 @@
     </div>
   </div>
 
-  <div class="dashboard-charts-row">
-
-    <div class="chart-card-wrapper flex-1">
-      <h3>Purata Mengikut Tingkatan</h3>
-      <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px;">
-        <table class="saas-data-table">
-          <thead>
-            <tr><th>Tingkatan</th><th>Peratus</th></tr>
-          </thead>
-          <tbody id="kh-form-rows">
-            <tr><td colspan="2" class="center-text">Memuatkan...</td></tr>
-          </tbody>
-        </table>
+  <!-- Purata setiap tingkatan + trend bulanan T5, both compact -->
+  <div class="chart-card-wrapper">
+    <h3>Purata Kehadiran Setiap Tingkatan</h3>
+    <div class="kh-mini-grid">
+      <div class="kh-mini">
+        <h4><span>Purata T1 - T5</span><span class="kh-mini-avg" id="kh-mini-forms-avg"></span></h4>
+        <div class="kh-mini-canvas"><canvas id="khc-forms"></canvas></div>
+      </div>
+      <div class="kh-mini">
+        <h4><span>Kehadiran Bulanan Tingkatan 5</span><span class="kh-mini-avg" id="kh-mini-t5-avg"></span></h4>
+        <div class="kh-mini-canvas"><canvas id="khc-t5monthly"></canvas></div>
       </div>
     </div>
-
-    <div class="chart-card-wrapper flex-2">
-      <h3>Purata Mengikut Kelas</h3>
-      <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px; max-height:420px; overflow-y:auto;">
-        <table class="saas-data-table">
-          <thead>
-            <tr><th>Kelas</th><th>Peratus</th><th style="width:35%;"></th></tr>
-          </thead>
-          <tbody id="kh-class-rows">
-            <tr><td colspan="3" class="center-text">Memuatkan...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
   </div>
+
+  <!-- One compact chart per form, built from the workbook's own class blocks -->
+  <div class="chart-card-wrapper">
+    <h3>Purata Kehadiran Mengikut Kelas</h3>
+    <div class="kh-mini-grid" id="kh-class-grid">
+      <div class="kh-mini"><h4><span>Memuatkan...</span></h4></div>
+    </div>
+    <p class="kh-note" id="kh-class-note"></p>
+  </div>
+
+  <!-- Exact figures kept, but collapsed: the default view stays compact -->
+  <details class="chart-card-wrapper kh-full-details">
+    <summary>Jadual nilai penuh</summary>
+    <div class="dashboard-charts-row" style="padding-top:4px;">
+
+      <div class="chart-card-wrapper flex-1">
+        <h3>Purata Mengikut Tingkatan</h3>
+        <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px;">
+          <table class="saas-data-table">
+            <thead>
+              <tr><th>Tingkatan</th><th>Peratus</th></tr>
+            </thead>
+            <tbody id="kh-form-rows">
+              <tr><td colspan="2" class="center-text">Memuatkan...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="chart-card-wrapper flex-2">
+        <h3>Purata Mengikut Kelas</h3>
+        <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px; max-height:420px; overflow-y:auto;">
+          <table class="saas-data-table">
+            <thead>
+              <tr><th>Kelas</th><th>Peratus</th><th style="width:35%;"></th></tr>
+            </thead>
+            <tbody id="kh-class-rows">
+              <tr><td colspan="3" class="center-text">Memuatkan...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </details>
 
   <p id="kh-status" class="empty-state-text" style="text-align:left;"></p>
 
@@ -80,6 +147,7 @@
   var KH_DATA = null;
   var KH_LOADING = false;
   var khChart = null;
+  var khMiniCharts = [];
 
   function khPct(v) {
     if (v === null || v === undefined || v === '') return '-';
@@ -99,6 +167,14 @@
     el.textContent = msg || '';
     el.className = 'empty-state-text' + (isError ? ' text-error' : '');
     el.style.textAlign = 'left';
+  }
+
+  function khIsNum(v) { return typeof v === 'number' && !isNaN(v); }
+
+  function khAvg(list) {
+    var v = (list || []).filter(khIsNum);
+    if (!v.length) return null;
+    return v.reduce(function (a, b) { return a + b; }, 0) / v.length;
   }
 
   function initKehadiranModule() {
@@ -147,16 +223,72 @@
     var yc = document.getElementById('kh-year-chart');
     if (yc) yc.textContent = d.year || '';
 
-    // ---- per form ----
+    // ---- headline monthly chart (unchanged, full size) ----
+    drawKehadiranChart(d.monthly || []);
+
+    // ---- compact purata charts ----
+    khClearMini();
+
+    var forms = d.forms || [];
+    var formsAvg = khAvg(forms.map(function (f) { return f.pct; }));
+    var formsAvgEl = document.getElementById('kh-mini-forms-avg');
+    if (formsAvgEl) formsAvgEl.textContent = khPct(formsAvg);
+    khDrawMini('khc-forms',
+      forms.map(function (f) { return f.form; }),
+      forms.map(function (f) { return f.pct; }),
+      null);
+
+    var t5 = d.monthlyT5 || [];
+    var t5AvgEl = document.getElementById('kh-mini-t5-avg');
+    if (t5AvgEl) t5AvgEl.textContent = d.t5Yearly !== null && d.t5Yearly !== undefined
+      ? khPct(d.t5Yearly) : khPct(khAvg(t5.map(function (m) { return m.pct; })));
+    khDrawMini('khc-t5monthly',
+      t5.map(function (m) { return m.code; }),
+      t5.map(function (m) { return m.pct; }),
+      null);
+
+    // one compact chart per form, using the workbook's own class groupings
+    var grid = document.getElementById('kh-class-grid');
+    var groups = d.classGroups || [];
+    if (grid) {
+      if (!groups.length) {
+        grid.innerHTML = '<div class="kh-mini"><h4><span>Tiada data kelas.</span></h4></div>';
+      } else {
+        grid.innerHTML = groups.map(function (g, i) {
+          var avg = khAvg(g.classes.map(function (c) { return c.pct; }));
+          return '<div class="kh-mini">' +
+            '<h4><span>' + g.form + '</span>' +
+            '<span class="kh-mini-avg">' + khPct(avg) + '</span></h4>' +
+            '<div class="kh-mini-canvas"><canvas id="khc-g' + i + '"></canvas></div>' +
+            '</div>';
+        }).join('');
+
+        groups.forEach(function (g, i) {
+          khDrawMini('khc-g' + i,
+            g.classes.map(function (c) { return c.name; }),
+            g.classes.map(function (c) { return c.pct; }),
+            khIsNum(d.yearlyAverage) ? d.yearlyAverage : null);
+        });
+      }
+    }
+
+    var note = document.getElementById('kh-class-note');
+    if (note) {
+      note.textContent = khIsNum(d.yearlyAverage)
+        ? 'Bar merah = kelas bawah purata sekolah (' + khPct(d.yearlyAverage) + '). '
+          + 'Sumber: Graf kehadiran ' + (d.year || '') + '.'
+        : 'Sumber: Graf kehadiran ' + (d.year || '') + '.';
+    }
+
+    // ---- exact values, in the collapsed table ----
     var formBody = document.getElementById('kh-form-rows');
     if (formBody) {
-      var formRows = (d.forms || []).map(function (f) {
+      var formRows = forms.map(function (f) {
         return '<tr><td>' + f.form + '</td><td>' + khPct(f.pct) + '</td></tr>';
       }).join('');
       formBody.innerHTML = formRows || '<tr><td colspan="2" class="center-text">Tiada data.</td></tr>';
     }
 
-    // ---- per class (bar makes weak classes visible at a glance) ----
     var classBody = document.getElementById('kh-class-rows');
     if (classBody) {
       var classRows = (d.classes || []).map(function (c) {
@@ -168,9 +300,83 @@
       classBody.innerHTML = classRows || '<tr><td colspan="3" class="center-text">Tiada data.</td></tr>';
     }
 
-    drawKehadiranChart(d.monthly || []);
-
     khSetStatus('Sumber: Graf kehadiran ' + (d.year || '') + '  |  Dikemas kini: ' + (d.generated || '-'));
+  }
+
+  function khClearMini() {
+    khMiniCharts.forEach(function (c) {
+      try { c.destroy(); } catch (e) { /* already gone */ }
+    });
+    khMiniCharts = [];
+  }
+
+  /**
+   * Small, compact bar chart. The y axis starts just below the lowest value
+   * rather than at 0, because attendance lives in a narrow 90-100% band and a
+   * zero-based axis would flatten every bar into an identical-looking block.
+   * The axis is labelled, and each bar is also printed on hover, so the
+   * truncated scale cannot mislead.
+   *
+   * highlightBelow: when set, bars under that value are drawn red. Used only for
+   * the per-class charts, where "below the school average" is actionable.
+   */
+  function khDrawMini(canvasId, labels, values, highlightBelow) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') return;
+
+    var nums = (values || []).filter(khIsNum);
+    if (!nums.length) return;
+
+    var lo = Math.min.apply(null, nums);
+    var yMin = Math.max(0, Math.floor((lo - 3) / 5) * 5);
+
+    var colors = (values || []).map(function (v) {
+      return (khIsNum(highlightBelow) && khIsNum(v) && v < highlightBelow) ? '#ea4335' : '#1a73e8';
+    });
+
+    var inst = new Chart(canvas.getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: labels,
+        datasets: [{
+          data: values,
+          backgroundColor: colors,
+          borderRadius: 4,
+          maxBarThickness: 26
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: { duration: 300 },
+        layout: { padding: { top: 2 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: function (ctx) { return khPct(ctx.parsed.y); }
+            }
+          }
+        },
+        scales: {
+          y: {
+            min: yMin,
+            max: 100,
+            ticks: {
+              font: { size: 9 },
+              stepSize: 5,
+              callback: function (v) { return v + '%'; }
+            },
+            grid: { drawTicks: false }
+          },
+          x: {
+            ticks: { font: { size: 9 }, maxRotation: 0, autoSkip: false },
+            grid: { display: false }
+          }
+        }
+      }
+    });
+    khMiniCharts.push(inst);
   }
 
   function drawKehadiranChart(monthly) {

@@ -149,17 +149,34 @@ function getEnrolmenReport(year, month) {
 //                             while every other block stores PERCENTAGES (96.77).
 //                             asPct_() normalises both.
 //   'Graf kehadiran'!C17:D21  per-form yearly averages T1..T5 (percentages)
-//   'Graf kehadiran'!A23:D52  per-class yearly averages (percentages), laid out as
-//                             two side-by-side blocks with header/total rows mixed in
-//   'Keseluruhan'!A17:B18     "Purata Tahunan 2026" label + value (FRACTION)
+//   'Graf kehadiran'!A23:D52  per-class yearly averages (percentages). The A/B pair
+//                             holds Tingkatan 1 and Tingkatan 4; the C/D pair holds
+//                             Tingkatan 2, 3 and 5. A "Tingkatan N" row opens a group
+//                             and an unlabelled row is that block's total. The groups
+//                             are preserved because the workbook's charts compare
+//                             classes WITHIN a form.
+//   'Graf kehadiran'!C55:D66  Tingkatan 5 monthly series; D68 is its yearly average
+//   'Graf kehadiran'!C2:D14   overall monthly - identical to the Keseluruhan data, so
+//                             the UI deliberately does not draw a second copy
+//   'Keseluruhan'!A17 / A18   "Purata Tahunan 2026" label with the value DIRECTLY
+//                             BELOW it in the SAME column A (not B18)
 // Uses only SpreadsheetApp, so no new OAuth scope is needed.
 
 const KEHADIRAN_SHEET_ID = '1VcMqlsOGZbzHOza5Kf6svMtR-L12HHrJaRfYdZJECMI';
-const KEHADIRAN_CACHE_KEY = 'KEHADIRAN_ANALYSIS_V1';
+const KEHADIRAN_CACHE_KEY = 'KEHADIRAN_ANALYSIS_V2';
 
 // The workbook mixes fractions (<= 1) and percentages (> 1) for the same thing.
+// A few cells are literal strings such as "96.44%", so handle those as well.
 function asPct_(value) {
   if (value === '' || value === null || value === undefined) return null;
+  if (typeof value === 'string') {
+    const t = value.trim();
+    if (t === '') return null;
+    if (t.indexOf('%') > -1) {
+      const p = Number(t.replace(/%/g, '').trim());
+      return isNaN(p) ? null : p;          // already a percentage
+    }
+  }
   const n = Number(value);
   if (isNaN(n)) return null;
   return n <= 1.5 ? n * 100 : n;
@@ -204,33 +221,77 @@ function getKehadiranAnalysis() {
     })
     .filter(function (f) { return f.form !== ''; });
 
-  // ---- per class (percentages, two blocks + header/total rows) ----
+  // ---- per class (percentages), grouped exactly as the workbook's own charts ----
+  // Layout: the A/B pair holds Tingkatan 1 and Tingkatan 4; the C/D pair holds
+  // Tingkatan 2, 3 and 5. A "Tingkatan N" row opens a group; a row with no label
+  // is that block's total and is skipped. Grouping is kept because the workbook
+  // charts compare classes WITHIN a form - flattening them loses that.
+  const groups = {};
+  const groupOrder = [];
   const classes = [];
+
+  function isFormHeader_(s) { return s.toLowerCase().indexOf('tingkatan') > -1; }
+
+  function addClass_(form, name, pct) {
+    if (pct === null) return;
+    const entry = { name: name, pct: Number(pct.toFixed(2)) };
+    if (form) {
+      if (!groups[form]) { groups[form] = []; groupOrder.push(form); }
+      groups[form].push(entry);
+    }
+    classes.push({ kelas: name, pct: entry.pct, form: form });
+  }
+
+  let leftForm = '';
+  let rightForm = '';
   graf.getRange('A23:D52').getValues().forEach(function (row) {
     const leftLabel = String(row[0] || '').trim();
-    const leftPct = asPct_(row[1]);
     const rightLabel = String(row[2] || '').trim();
-    const rightPct = asPct_(row[3]);
-    const isHeader = function (s) { return s.toLowerCase().indexOf('tingkatan') > -1; };
-    if (leftLabel && !isHeader(leftLabel) && leftPct !== null) {
-      classes.push({ kelas: leftLabel, pct: Number(leftPct.toFixed(2)) });
+    if (isFormHeader_(leftLabel)) {
+      leftForm = leftLabel;
+    } else if (leftLabel) {
+      addClass_(leftForm, leftLabel, asPct_(row[1]));
     }
-    if (rightLabel && !isHeader(rightLabel) && rightPct !== null) {
-      classes.push({ kelas: rightLabel, pct: Number(rightPct.toFixed(2)) });
+    if (isFormHeader_(rightLabel)) {
+      rightForm = rightLabel;
+    } else if (rightLabel) {
+      addClass_(rightForm, rightLabel, asPct_(row[3]));
     }
   });
+
+  const classGroups = groupOrder
+    .map(function (form) { return { form: form, classes: groups[form] }; })
+    .sort(function (a, b) {
+      return a.form.localeCompare(b.form, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
   classes.sort(function (a, b) {
     return a.kelas.localeCompare(b.kelas, undefined, { numeric: true, sensitivity: 'base' });
   });
 
+  // ---- Tingkatan 5 monthly series (its own block; workbook chart C54:D66) ----
+  const monthlyT5 = graf.getRange('C55:D66').getValues()
+    .map(function (row) {
+      const code = String(row[0] || '').trim().toUpperCase();
+      const pct = asPct_(row[1]);
+      return { code: code, pct: pct === null ? null : Number(pct.toFixed(2)) };
+    })
+    .filter(function (m) { return m.code !== ''; });
+  const t5Yearly = asPct_(graf.getRange('D68').getValue());
+
   // ---- yearly average from Keseluruhan ----
+  // The value sits directly BELOW the label and in the SAME column (A17 label,
+  // A18 value). Reading column B here returned nothing and only looked correct
+  // because the computed fallback below silently covered for it.
   let yearly = null;
   const kes = ss.getSheetByName('Keseluruhan');
   if (kes) {
     const kesValues = kes.getRange('A1:B20').getValues();
     for (let i = 0; i < kesValues.length; i++) {
       if (String(kesValues[i][0] || '').toLowerCase().indexOf('purata tahunan') > -1) {
-        yearly = asPct_(kesValues[i + 1] ? kesValues[i + 1][1] : null);  // value is on the row below
+        const rowBelow = kesValues[i + 1] || [];
+        yearly = asPct_(rowBelow[0]);
+        if (yearly === null) yearly = asPct_(rowBelow[1]);   // tolerate the other layout
         break;
       }
     }
@@ -249,6 +310,9 @@ function getKehadiranAnalysis() {
     monthly: monthly,
     forms: forms,
     classes: classes,
+    classGroups: classGroups,
+    monthlyT5: monthlyT5,
+    t5Yearly: t5Yearly === null ? null : Number(t5Yearly.toFixed(2)),
     monthsReported: reported.length,
     monthsTotal: monthly.length,
     latest: reported.length ? reported[reported.length - 1] : null,
