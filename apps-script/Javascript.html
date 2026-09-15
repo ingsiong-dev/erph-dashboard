@@ -50,13 +50,73 @@ function fetchSystemAnalyticsDatasetPayload(forceRefresh = false) {
       switchActiveView('dashboard');
     })
     .withFailureHandler(function(error) {
-      alert("Critical Connection Failure to Backend Architecture Services: " + error.toString());
+      handleDashboardLoadFailure(error);
     })
     .getDashboardMasterData(forceRefresh);
 }
 
 function forceSystemDataRefresh() {
   fetchSystemAnalyticsDatasetPayload(true);
+}
+
+/**
+ * The dashboard dataset could not be loaded - a Sheets read-quota trip, a
+ * transient network blip or a backend error.
+ *
+ * This MUST always hide the loading overlay. The app runs with
+ * executeAs=USER_DEPLOYING, so every teacher's request executes as the owner and
+ * the Sheets read quota (60/minute) is shared across the whole school. A busy
+ * moment can therefore fail this load, and an overlay left on screen covers the
+ * whole viewport - the portal looks frozen and nothing can be clicked, so the
+ * teacher has to reload the page.
+ *
+ * No alert() here on purpose: it blocks the renderer until dismissed.
+ */
+function handleDashboardLoadFailure(error) {
+  var spinner = document.getElementById('loading-spinner');
+  if (spinner) spinner.classList.add('hidden');
+
+  var label = document.getElementById('cache-timestamp-label');
+  if (label) label.innerText = 'Sync status: Gagal - klik Sync Database';
+
+  // Keep every other module reachable - Kehadiran, Enrolmen and Guru each fetch
+  // their own data and work without the dashboard dataset.
+  switchActiveView('dashboard');
+  showDashboardLoadNotice(error);
+}
+
+function showDashboardLoadNotice(error) {
+  var host = document.getElementById('view-dashboard');
+  if (!host) return;
+
+  var old = document.getElementById('data-load-notice');
+  if (old && old.parentNode) old.parentNode.removeChild(old);
+
+  var box = document.createElement('div');
+  box.id = 'data-load-notice';
+  box.className = 'report-action-selection-card';
+  box.style.margin = '0 0 16px 0';
+
+  var title = document.createElement('strong');
+  title.textContent = 'Data eRPH tidak dapat dimuatkan.';
+
+  var msg = document.createElement('div');
+  msg.style.marginTop = '6px';
+  msg.style.color = '#5f6368';
+  msg.textContent = 'Kemungkinan had capaian Google Sheets dicapai sebentar. ' +
+    'Sila klik "Sync Database" di bawah untuk cuba semula. ' +
+    'Modul Kehadiran, Enrolmen dan Guru masih boleh digunakan.';
+
+  var detail = document.createElement('div');
+  detail.style.marginTop = '6px';
+  detail.style.fontSize = '12px';
+  detail.style.color = '#9aa0a6';
+  detail.textContent = String(error);
+
+  box.appendChild(title);
+  box.appendChild(msg);
+  box.appendChild(detail);
+  host.insertBefore(box, host.firstChild);
 }
 
 /**
