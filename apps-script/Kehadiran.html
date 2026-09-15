@@ -177,6 +177,24 @@
     return v.reduce(function (a, b) { return a + b; }, 0) / v.length;
   }
 
+  /**
+   * The workbook's OWN average for a form, e.g. "Tingkatan 1" -> the T1 row.
+   *
+   * This matters: the official figure is weighted by enrolment, while the mean of
+   * the class percentages is not, and they differ noticeably - T1 is 96.77%
+   * officially but 97.17% as a plain mean of its 8 classes. The official figure is
+   * the one the school reports, so that is what the card shows.
+   */
+  function khFormValue(forms, groupForm) {
+    var m = /(\d+)/.exec(groupForm || '');
+    if (!m) return null;
+    var want = 'T' + m[1];
+    for (var i = 0; i < (forms || []).length; i++) {
+      if (String(forms[i].form || '').trim().toUpperCase() === want) return forms[i].pct;
+    }
+    return null;
+  }
+
   function initKehadiranModule() {
     if (KH_DATA || KH_LOADING) return;   // loaded once per session
     KH_LOADING = true;
@@ -255,10 +273,13 @@
         grid.innerHTML = '<div class="kh-mini"><h4><span>Tiada data kelas.</span></h4></div>';
       } else {
         grid.innerHTML = groups.map(function (g, i) {
-          var avg = khAvg(g.classes.map(function (c) { return c.pct; }));
+          var official = khFormValue(forms, g.form);
+          var shown = khIsNum(official)
+            ? official
+            : khAvg(g.classes.map(function (c) { return c.pct; }));
           return '<div class="kh-mini">' +
             '<h4><span>' + g.form + '</span>' +
-            '<span class="kh-mini-avg">' + khPct(avg) + '</span></h4>' +
+            '<span class="kh-mini-avg">' + khPct(shown) + '</span></h4>' +
             '<div class="kh-mini-canvas"><canvas id="khc-g' + i + '"></canvas></div>' +
             '</div>';
         }).join('');
@@ -274,10 +295,14 @@
 
     var note = document.getElementById('kh-class-note');
     if (note) {
-      note.textContent = khIsNum(d.yearlyAverage)
-        ? 'Bar merah = kelas bawah purata sekolah (' + khPct(d.yearlyAverage) + '). '
-          + 'Sumber: Graf kehadiran ' + (d.year || '') + '.'
-        : 'Sumber: Graf kehadiran ' + (d.year || '') + '.';
+      var parts = [];
+      if (khIsNum(d.yearlyAverage)) {
+        parts.push('Bar merah = kelas bawah purata sekolah (' + khPct(d.yearlyAverage) + ').');
+      }
+      parts.push('Nombor pada setiap kad = purata rasmi tingkatan daripada helaian; '
+        + 'bar = purata setiap kelas.');
+      parts.push('Sumber: Graf kehadiran ' + (d.year || '') + '.');
+      note.textContent = parts.join(' ');
     }
 
     // ---- exact values, in the collapsed table ----
