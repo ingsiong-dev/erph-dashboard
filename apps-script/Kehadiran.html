@@ -311,6 +311,81 @@
   }
 
   /**
+   * Draws the percentage on top of every bar, so the figures can be read without
+   * hovering. Implemented here rather than with chartjs-plugin-datalabels so the
+   * app needs no extra CDN script.
+   *
+   * The label is adaptive: it steps the font size down, and the precision from 2
+   * decimals to 1 to a whole number, until it fits the width of its own bar. The
+   * compact charts hold up to 12 bars, where "97.25%" would otherwise collide with
+   * its neighbour. A value is still shown on EVERY bar - the format gives way, not
+   * the label.
+   */
+  var khBarLabels = {
+    id: 'khBarLabels',
+    afterDatasetsDraw: function (chart) {
+      var opts = (chart.options.plugins && chart.options.plugins.khBarLabels) || {};
+      if (opts.display === false) return;
+
+      var meta = chart.getDatasetMeta(0);
+      if (!meta || meta.hidden || !meta.data || !meta.data.length) return;
+      var values = ((chart.data.datasets || [])[0] || {}).data || [];
+      var area = chart.chartArea;
+      if (!area) return;
+
+      var slot = area.width / meta.data.length;
+      var maxFont = opts.fontSize || 10;
+      var minFont = opts.minFontSize || 6;
+      var colour = opts.color || '#3c4043';
+      var family = 'Roboto, system-ui, -apple-system, "Segoe UI", sans-serif';
+      var ctx = chart.ctx;
+
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = colour;
+
+      for (var i = 0; i < meta.data.length; i++) {
+        var v = values[i];
+        if (v === null || v === undefined || isNaN(v)) continue;   // gap month
+
+        var text = null;
+        var size = maxFont;
+        for (var f = maxFont; f >= minFont && !text; f -= 0.5) {
+          for (var d = 2; d >= 0; d--) {
+            var cand = (d === 0 ? Math.round(v) : Number(v).toFixed(d)) + '%';
+            ctx.font = '600 ' + f + 'px ' + family;
+            if (ctx.measureText(cand).width <= slot - 3) {
+              text = cand;
+              size = f;
+              break;
+            }
+          }
+        }
+        if (!text) {                      // even the shortest form is tight
+          size = minFont;
+          text = Math.round(v) + '%';
+        }
+        ctx.font = '600 ' + size + 'px ' + family;
+
+        var bar = meta.data[i];
+        var y = bar.y - 3;
+        if (y - size < 0) {
+          // bar reaches the very top: tuck the label just inside it instead
+          ctx.save();
+          ctx.fillStyle = '#ffffff';
+          ctx.textBaseline = 'top';
+          ctx.fillText(text, bar.x, bar.y + 3);
+          ctx.restore();
+        } else {
+          ctx.fillText(text, bar.x, y);
+        }
+      }
+      ctx.restore();
+    }
+  };
+
+  /**
    * Small, compact bar chart. The y axis starts just below the lowest value
    * rather than at 0, because attendance lives in a narrow 90-100% band and a
    * zero-based axis would flatten every bar into an identical-looking block.
@@ -345,13 +420,16 @@
           maxBarThickness: 26
         }]
       },
+      plugins: [khBarLabels],
       options: {
         responsive: true,
         maintainAspectRatio: false,
         animation: { duration: 300 },
-        layout: { padding: { top: 2 } },
+        // headroom so the value label on the tallest bar is not clipped
+        layout: { padding: { top: 16 } },
         plugins: {
           legend: { display: false },
+          khBarLabels: { fontSize: 9, minFontSize: 6 },
           tooltip: {
             callbacks: {
               label: function (ctx) { return khPct(ctx.parsed.y); }
@@ -396,10 +474,16 @@
             borderRadius: 6
           }]
         },
+        plugins: [khBarLabels],
         options: {
           responsive: true,
           maintainAspectRatio: false,
-          plugins: { legend: { display: false } },
+          // the headline chart has room, so it labels every bar with 2 decimals
+          layout: { padding: { top: 18 } },
+          plugins: {
+            legend: { display: false },
+            khBarLabels: { fontSize: 11, minFontSize: 8 }
+          },
           scales: {
             y: {
               suggestedMin: 85,
