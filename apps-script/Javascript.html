@@ -80,7 +80,8 @@ function switchActiveView(targetViewId) {
       dashboard: 'Rumusan eRPH',
       teachers:  'Senarai Guru',
       detail:    'Butiran Guru',
-      kehadiran: 'Kehadiran & Enrolmen',
+      kehadiran: 'Analisis Kehadiran',
+      enrolmen:  'Enrolmen Murid',
       analytics: 'Analisis',
       reports:   'Laporan'
     };
@@ -90,6 +91,9 @@ function switchActiveView(targetViewId) {
   // Custom view hook allocations
   if (targetViewId === 'kehadiran') {
      initKehadiranModule();
+  }
+  if (targetViewId === 'enrolmen') {
+     initEnrolmenModule();
   }
   if (targetViewId === 'analytics') {
      generateAdvancedAnalyticsWorkspaceCharts();

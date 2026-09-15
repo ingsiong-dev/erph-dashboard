@@ -91,7 +91,8 @@ organised as three modules, because it is growing beyond eRPH:
 |---|---|---|
 | eRPH | Rumusan eRPH | teacher eRPH submission compliance (the original dashboard) |
 | Guru | Senarai Guru | per-teacher drill-down |
-| Kehadiran | Kehadiran & Enrolmen | **new** - downloads the monthly Laporan Enrolmen PDFs from Drive |
+| Kehadiran | Analisis Kehadiran | **new** - attendance analysis from the *Graf kehadiran 2026* workbook |
+| Enrolmen | Enrolmen Murid | downloads the monthly Laporan Enrolmen PDFs from Drive |
 | Laporan | Laporan | CSV / Excel exports |
 
 The navbar label is the **school code `YEE6301`** (previously the placeholder "Public Access").
@@ -111,3 +112,22 @@ Drive folder `Enrolmen murid` (`1XNecX0c2PGhdnGCRFfFQQMc7LV9toSnK`), named
 
 This module is **public** - anyone with the link can download any month's report (chosen
 deliberately). It needs the `drive` OAuth scope, which the script did not use before.
+### The Kehadiran module (attendance analysis)
+
+Reads the workbook **Graf kehadiran 2026** (`1VcMqlsOGZbzHOza5Kf6svMtR-L12HHrJaRfYdZJECMI`) and
+shows: yearly average, latest month + month-on-month change, months reported, a monthly bar
+chart, per-form averages (T1-T5) and per-class averages. Uses only `SpreadsheetApp`, so unlike
+the Enrolmen downloads it needs **no extra Google permission**.
+
+Layout it reads (verified against the live workbook):
+
+| Sheet | Range | Unit |
+|---|---|---|
+| `Graf kehadiran` | `C3:D14` months + attendance | **fraction** (0.9725) |
+| `Graf kehadiran` | `C17:D21` T1-T5 yearly averages | **percentage** (96.77) |
+| `Graf kehadiran` | `A23:D52` per-class yearly averages | **percentage**, two side-by-side blocks with header and total rows mixed in |
+| `Keseluruhan` | `A17` label / `B18` value | **fraction** (0.96435) |
+
+The workbook stores the same measure as both fractions and percentages, so `asPct_()`
+normalises (`n <= 1.5 ? n * 100 : n`). The month-on-month change is computed from the values
+displayed rather than read from the BEZA column, so the two can never disagree.

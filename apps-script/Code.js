@@ -141,3 +141,124 @@ function getEnrolmenReport(year, month) {
     size: blob.getBytes().length
   };
 }
+// ==================== KEHADIRAN (attendance analysis) ====================
+// Reads the workbook "Graf kehadiran 2026". Layout facts below were VERIFIED by
+// reading the workbook, not assumed:
+//   'Graf kehadiran'!C3:D14   months JAN..DIS + attendance
+//                             NOTE: this block stores FRACTIONS (0.9725 = 97.25%)
+//                             while every other block stores PERCENTAGES (96.77).
+//                             asPct_() normalises both.
+//   'Graf kehadiran'!C17:D21  per-form yearly averages T1..T5 (percentages)
+//   'Graf kehadiran'!A23:D52  per-class yearly averages (percentages), laid out as
+//                             two side-by-side blocks with header/total rows mixed in
+//   'Keseluruhan'!A17:B18     "Purata Tahunan 2026" label + value (FRACTION)
+// Uses only SpreadsheetApp, so no new OAuth scope is needed.
+
+const KEHADIRAN_SHEET_ID = '1VcMqlsOGZbzHOza5Kf6svMtR-L12HHrJaRfYdZJECMI';
+const KEHADIRAN_CACHE_KEY = 'KEHADIRAN_ANALYSIS_V1';
+
+// The workbook mixes fractions (<= 1) and percentages (> 1) for the same thing.
+function asPct_(value) {
+  if (value === '' || value === null || value === undefined) return null;
+  const n = Number(value);
+  if (isNaN(n)) return null;
+  return n <= 1.5 ? n * 100 : n;
+}
+
+function getKehadiranAnalysis() {
+  const cache = CacheService.getScriptCache();
+  try {
+    const hit = cache.get(KEHADIRAN_CACHE_KEY);
+    if (hit) return JSON.parse(hit);
+  } catch (e) {
+    // fall through and rebuild
+  }
+
+  const ss = SpreadsheetApp.openById(KEHADIRAN_SHEET_ID);
+  const graf = ss.getSheetByName('Graf kehadiran');
+  if (!graf) throw new Error('Tab "Graf kehadiran" tidak dijumpai');
+
+  // ---- monthly (fractions) ----
+  const monthly = graf.getRange('C3:D14').getValues()
+    .map(function (row) {
+      const code = String(row[0] || '').trim().toUpperCase();
+      const pct = asPct_(row[1]);
+      return { code: code, pct: pct === null ? null : Number(pct.toFixed(2)) };
+    })
+    .filter(function (m) { return m.code !== ''; });
+
+  // month-on-month change in percentage points - computed from the values shown,
+  // never read from a separate column, so the two can never disagree
+  let previous = null;
+  monthly.forEach(function (m) {
+    m.beza = (m.pct !== null && previous !== null) ? Number((m.pct - previous).toFixed(2)) : null;
+    if (m.pct !== null) previous = m.pct;
+  });
+
+  // ---- per form (percentages) ----
+  const forms = graf.getRange('C17:D21').getValues()
+    .map(function (row) {
+      const label = String(row[0] || '').trim().toUpperCase();
+      const pct = asPct_(row[1]);
+      return { form: label, pct: pct === null ? null : Number(pct.toFixed(2)) };
+    })
+    .filter(function (f) { return f.form !== ''; });
+
+  // ---- per class (percentages, two blocks + header/total rows) ----
+  const classes = [];
+  graf.getRange('A23:D52').getValues().forEach(function (row) {
+    const leftLabel = String(row[0] || '').trim();
+    const leftPct = asPct_(row[1]);
+    const rightLabel = String(row[2] || '').trim();
+    const rightPct = asPct_(row[3]);
+    const isHeader = function (s) { return s.toLowerCase().indexOf('tingkatan') > -1; };
+    if (leftLabel && !isHeader(leftLabel) && leftPct !== null) {
+      classes.push({ kelas: leftLabel, pct: Number(leftPct.toFixed(2)) });
+    }
+    if (rightLabel && !isHeader(rightLabel) && rightPct !== null) {
+      classes.push({ kelas: rightLabel, pct: Number(rightPct.toFixed(2)) });
+    }
+  });
+  classes.sort(function (a, b) {
+    return a.kelas.localeCompare(b.kelas, undefined, { numeric: true, sensitivity: 'base' });
+  });
+
+  // ---- yearly average from Keseluruhan ----
+  let yearly = null;
+  const kes = ss.getSheetByName('Keseluruhan');
+  if (kes) {
+    const kesValues = kes.getRange('A1:B20').getValues();
+    for (let i = 0; i < kesValues.length; i++) {
+      if (String(kesValues[i][0] || '').toLowerCase().indexOf('purata tahunan') > -1) {
+        yearly = asPct_(kesValues[i + 1] ? kesValues[i + 1][1] : null);  // value is on the row below
+        break;
+      }
+    }
+  }
+  if (yearly === null) {
+    const done = monthly.filter(function (m) { return m.pct !== null; });
+    if (done.length) {
+      yearly = done.reduce(function (sum, m) { return sum + m.pct; }, 0) / done.length;
+    }
+  }
+
+  const reported = monthly.filter(function (m) { return m.pct !== null; });
+  const payload = {
+    year: 2026,
+    yearlyAverage: yearly === null ? null : Number(yearly.toFixed(2)),
+    monthly: monthly,
+    forms: forms,
+    classes: classes,
+    monthsReported: reported.length,
+    monthsTotal: monthly.length,
+    latest: reported.length ? reported[reported.length - 1] : null,
+    generated: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm')
+  };
+
+  try {
+    cache.put(KEHADIRAN_CACHE_KEY, JSON.stringify(payload), 300);
+  } catch (e) {
+    // too large for cache - serve live next time
+  }
+  return payload;
+}

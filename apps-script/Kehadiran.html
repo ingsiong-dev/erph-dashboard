@@ -1,188 +1,208 @@
 <div class="dashboard-content-grid">
 
-  <div class="reporting-options-grid-layout">
-
-    <div class="report-action-selection-card">
-      <div class="card-icon-illustration-badge blue">
-        <span class="material-symbols-outlined">folder_open</span>
+  <div class="kpi-cards-grid">
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Purata Tahunan</span>
+        <span class="material-symbols-outlined icon blue">analytics</span>
       </div>
-      <h3>Laporan Enrolmen Murid</h3>
-      <p>Pilih tahun dan bulan, kemudian muat turun Laporan Enrolmen (PDF) daripada Google Drive.</p>
-
-      <div class="select-dropdown-group" style="margin-bottom:16px;">
-        <select id="enrol-year" onchange="renderEnrolMonths()" title="Tahun"></select>
-        <select id="enrol-month" title="Bulan"></select>
+      <h3 id="kh-yearly" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Bulan Terkini</span>
+        <span class="material-symbols-outlined icon green">event_available</span>
       </div>
-
-      <div class="report-action-buttons-group-row">
-        <button id="enrol-download-btn" class="btn-report-download action-xlsx" onclick="downloadEnrolmen()">
-          Muat Turun Laporan
-        </button>
+      <h3 id="kh-latest" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Perubahan Bulanan</span>
+        <span class="material-symbols-outlined icon purple">trending_up</span>
       </div>
+      <h3 id="kh-beza" class="kpi-value">-</h3>
+    </div>
+    <div class="kpi-card">
+      <div class="card-kpi-header">
+        <span class="kpi-title">Bulan Dilaporkan</span>
+        <span class="material-symbols-outlined icon orange">calendar_month</span>
+      </div>
+      <h3 id="kh-reported" class="kpi-value">-</h3>
+    </div>
+  </div>
 
-      <p id="enrol-status" class="empty-state-text" style="padding:12px 0 0 0; text-align:left;"></p>
+  <div class="dashboard-charts-row">
+    <div class="chart-card-wrapper flex-3">
+      <h3>Peratus Kehadiran Bulanan <span id="kh-year-chart"></span></h3>
+      <div class="chart-canvas-container">
+        <canvas id="chartKehadiranBulanan"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="dashboard-charts-row">
+
+    <div class="chart-card-wrapper flex-1">
+      <h3>Purata Mengikut Tingkatan</h3>
+      <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px;">
+        <table class="saas-data-table">
+          <thead>
+            <tr><th>Tingkatan</th><th>Peratus</th></tr>
+          </thead>
+          <tbody id="kh-form-rows">
+            <tr><td colspan="2" class="center-text">Memuatkan...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="chart-card-wrapper flex-2">
+      <h3>Purata Mengikut Kelas</h3>
+      <div class="table-responsive-wrapper" style="padding:0 20px 20px 20px; max-height:420px; overflow-y:auto;">
+        <table class="saas-data-table">
+          <thead>
+            <tr><th>Kelas</th><th>Peratus</th><th style="width:35%;"></th></tr>
+          </thead>
+          <tbody id="kh-class-rows">
+            <tr><td colspan="3" class="center-text">Memuatkan...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
 
   </div>
 
-  <div class="table-container-card">
-    <div class="table-card-header">
-      <h3>Status Laporan Enrolmen <span id="enrol-year-label"></span></h3>
-    </div>
-    <div class="table-responsive-wrapper">
-      <table class="saas-data-table">
-        <thead>
-          <tr>
-            <th>Bulan</th>
-            <th>Status</th>
-            <th>Saiz Fail</th>
-            <th>Kemas Kini</th>
-          </tr>
-        </thead>
-        <tbody id="enrol-status-rows">
-          <tr><td colspan="4" class="center-text">Buka menu Kehadiran untuk memuatkan senarai laporan.</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+  <p id="kh-status" class="empty-state-text" style="text-align:left;"></p>
 
 </div>
 
 <script>
-  var ENROL_INDEX = null;
-  var ENROL_LOADING = false;
+  var KH_DATA = null;
+  var KH_LOADING = false;
+  var khChart = null;
 
-  function setEnrolStatus(msg, isError) {
-    var el = document.getElementById('enrol-status');
+  function khPct(v) {
+    if (v === null || v === undefined || v === '') return '-';
+    return Number(v).toFixed(2) + '%';
+  }
+
+  // factual direction, not an invented threshold: green = up, red = down
+  function khBeza(v) {
+    if (v === null || v === undefined || v === '') return '-';
+    var n = Number(v);
+    return (n > 0 ? '+' : '') + n.toFixed(2) + ' pp';
+  }
+
+  function khSetStatus(msg, isError) {
+    var el = document.getElementById('kh-status');
     if (!el) return;
     el.textContent = msg || '';
     el.className = 'empty-state-text' + (isError ? ' text-error' : '');
-    el.style.padding = '12px 0 0 0';
     el.style.textAlign = 'left';
   }
 
-  // Loaded lazily, the first time the Kehadiran menu is opened. The server
-  // result is cached for 5 minutes, so repeatedly switching views is cheap.
   function initKehadiranModule() {
-    if (ENROL_INDEX || ENROL_LOADING) return;
-    ENROL_LOADING = true;
-    setEnrolStatus('Memuatkan senarai laporan...');
+    if (KH_DATA || KH_LOADING) return;   // loaded once per session
+    KH_LOADING = true;
+    khSetStatus('Memuatkan data kehadiran...');
 
     google.script.run
-      .withSuccessHandler(function (idx) {
-        ENROL_LOADING = false;
-        ENROL_INDEX = idx;
-
-        var years = Object.keys((idx && idx.years) || {}).sort();
-        var yearSel = document.getElementById('enrol-year');
-        yearSel.innerHTML = '';
-        years.forEach(function (y) {
-          var o = document.createElement('option');
-          o.value = y;
-          o.textContent = y;
-          yearSel.appendChild(o);
-        });
-        if (years.length) yearSel.value = years[years.length - 1];
-
-        renderEnrolMonths();
-        setEnrolStatus('');
+      .withSuccessHandler(function (data) {
+        KH_LOADING = false;
+        KH_DATA = data;
+        renderKehadiranModule();
       })
       .withFailureHandler(function (err) {
-        ENROL_LOADING = false;
-        setEnrolStatus('Gagal memuatkan senarai laporan: ' +
+        KH_LOADING = false;
+        khSetStatus('Gagal memuatkan data kehadiran: ' +
           ((err && err.message) ? err.message : err), true);
       })
-      .getEnrolmenIndex();
+      .getKehadiranAnalysis();
   }
 
-  function renderEnrolMonths() {
-    if (!ENROL_INDEX) return;
-    var yearSel  = document.getElementById('enrol-year');
-    var monthSel = document.getElementById('enrol-month');
-    var tbody    = document.getElementById('enrol-status-rows');
-    var label    = document.getElementById('enrol-year-label');
-    if (!yearSel || !monthSel) return;
+  function renderKehadiranModule() {
+    var d = KH_DATA || {};
 
-    var year   = yearSel.value;
-    var months = (ENROL_INDEX.years || {})[year] || [];
-    if (label) label.textContent = year;
+    // ---- KPI ----
+    var yearly = document.getElementById('kh-yearly');
+    if (yearly) yearly.textContent = khPct(d.yearlyAverage);
 
-    monthSel.innerHTML = '';
-    var firstAvailable = null;
-    months.forEach(function (m) {
-      var o = document.createElement('option');
-      o.value = m.month;
-      o.textContent = m.available ? m.month : m.month + ' (belum tersedia)';
-      if (!m.available) o.disabled = true;
-      else if (!firstAvailable) firstAvailable = m.month;
-      monthSel.appendChild(o);
-    });
-    if (firstAvailable) monthSel.value = firstAvailable;
+    var latest = document.getElementById('kh-latest');
+    if (latest) {
+      latest.textContent = d.latest ? (d.latest.code + '  ' + khPct(d.latest.pct)) : '-';
+      latest.style.fontSize = '20px';
+    }
 
-    if (tbody) {
-      var rows = months.map(function (m) {
-        return '<tr><td>' + m.month + '</td>' +
-          '<td><span class="status-pill ' + (m.available ? 'completed' : 'none') + '">' +
-          (m.available ? 'Tersedia' : 'Belum tersedia') + '</span></td>' +
-          '<td>' + (m.available ? m.sizeLabel : '-') + '</td>' +
-          '<td>' + (m.available ? m.modified : '-') + '</td></tr>';
+    var bezaEl = document.getElementById('kh-beza');
+    if (bezaEl) {
+      bezaEl.textContent = d.latest ? khBeza(d.latest.beza) : '-';
+      bezaEl.className = 'kpi-value' + (d.latest && d.latest.beza > 0 ? ' text-success'
+                                       : (d.latest && d.latest.beza < 0 ? ' text-error' : ''));
+      bezaEl.style.fontSize = '20px';
+    }
+
+    var reported = document.getElementById('kh-reported');
+    if (reported) reported.textContent = (d.monthsReported || 0) + ' / ' + (d.monthsTotal || 0);
+
+    var yc = document.getElementById('kh-year-chart');
+    if (yc) yc.textContent = d.year || '';
+
+    // ---- per form ----
+    var formBody = document.getElementById('kh-form-rows');
+    if (formBody) {
+      var formRows = (d.forms || []).map(function (f) {
+        return '<tr><td>' + f.form + '</td><td>' + khPct(f.pct) + '</td></tr>';
       }).join('');
-      tbody.innerHTML = rows || '<tr><td colspan="4" class="center-text">Tiada data.</td></tr>';
+      formBody.innerHTML = formRows || '<tr><td colspan="2" class="center-text">Tiada data.</td></tr>';
     }
 
-    var ready = months.filter(function (m) { return m.available; }).length;
-    setEnrolStatus(ready + ' daripada ' + months.length +
-      ' bulan tersedia untuk tahun ' + year + '.');
+    // ---- per class (bar makes weak classes visible at a glance) ----
+    var classBody = document.getElementById('kh-class-rows');
+    if (classBody) {
+      var classRows = (d.classes || []).map(function (c) {
+        var w = Math.max(0, Math.min(100, Number(c.pct) || 0));
+        return '<tr><td>' + c.kelas + '</td><td>' + khPct(c.pct) + '</td>' +
+          '<td><div style="background:#e8eaed;border-radius:6px;height:8px;width:100%;overflow:hidden;">' +
+          '<div style="background:#1a73e8;height:100%;width:' + w + '%;"></div></div></td></tr>';
+      }).join('');
+      classBody.innerHTML = classRows || '<tr><td colspan="3" class="center-text">Tiada data.</td></tr>';
+    }
+
+    drawKehadiranChart(d.monthly || []);
+
+    khSetStatus('Sumber: Graf kehadiran ' + (d.year || '') + '  |  Dikemas kini: ' + (d.generated || '-'));
   }
 
-  function downloadEnrolmen() {
-    if (!ENROL_INDEX) {
-      setEnrolStatus('Senarai laporan belum dimuatkan. Buka semula menu Kehadiran.', true);
-      return;
-    }
-    var yearSel  = document.getElementById('enrol-year');
-    var monthSel = document.getElementById('enrol-month');
-    var year  = yearSel ? yearSel.value : '';
-    var month = monthSel ? monthSel.value : '';
-    var months = (ENROL_INDEX.years || {})[year] || [];
-    var entry = months.filter(function (m) { return m.month === month; })[0];
+  function drawKehadiranChart(monthly) {
+    var canvas = document.getElementById('chartKehadiranBulanan');
+    if (!canvas || typeof Chart === 'undefined' || khChart) return;
 
-    if (!entry || !entry.available) {
-      setEnrolStatus('Laporan ' + month + ' ' + year + ' belum tersedia.', true);
-      return;
-    }
-
-    var btn = document.getElementById('enrol-download-btn');
-    if (btn) btn.disabled = true;
-    setEnrolStatus('Memuat turun ' + month + ' ' + year + '...');
-
-    google.script.run
-      .withSuccessHandler(function (res) {
-        if (btn) btn.disabled = false;
-        if (!res || !res.base64) {
-          setEnrolStatus('Fail tidak dijumpai.', true);
-          return;
+    // let the view finish laying out before Chart.js measures the canvas
+    setTimeout(function () {
+      khChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+          labels: monthly.map(function (m) { return m.code; }),
+          datasets: [{
+            label: 'Peratus Kehadiran',
+            data: monthly.map(function (m) { return m.pct; }),   // null months render as gaps
+            backgroundColor: '#1a73e8',
+            borderRadius: 6
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: {
+              suggestedMin: 85,
+              suggestedMax: 100,
+              ticks: { callback: function (v) { return v + '%'; } }
+            }
+          }
         }
-        var bin   = atob(res.base64);
-        var bytes = new Uint8Array(bin.length);
-        for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-
-        var blob = new Blob([bytes], { type: res.mimeType || 'application/pdf' });
-        var url  = URL.createObjectURL(blob);
-        var a    = document.createElement('a');
-        a.href = url;
-        a.download = res.filename || ('Laporan Enrolmen ' + month + ' ' + year + '.pdf');
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-
-        setEnrolStatus('Selesai dimuat turun: ' + (res.filename || (month + ' ' + year)));
-      })
-      .withFailureHandler(function (err) {
-        if (btn) btn.disabled = false;
-        setEnrolStatus('Gagal memuat turun: ' + ((err && err.message) ? err.message : err), true);
-      })
-      .getEnrolmenReport(year, month);
+      });
+    }, 80);
   }
 </script>
