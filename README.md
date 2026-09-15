@@ -168,5 +168,16 @@ their y-axis just below the lowest value instead of at 0 — attendance sits in 
 90–100% band, where a zero-based axis would flatten every bar into an identical block — so
 the axis is labelled and each value is also shown on hover.
 
+Every bar is labelled with its percentage, so no hovering is needed. The label is adaptive:
+its font size and precision (2 decimals, then 1, then a whole number) step down until the
+text fits the width of its own bar, so the compact charts never show overlapping numbers. A
+value always appears on every bar - the format gives way, not the label. This is a small
+inline Chart.js plugin in `Kehadiran.html`, so there is no extra CDN dependency.
+
+The figure on each per-form card is the **sheet's official average for that form**, not the
+mean of the bars. The two differ because the official figure is weighted by enrolment:
+Tingkatan 1 is 96.77% officially but 97.17% as a plain mean of its eight classes. The
+official value is what the school reports, so that is what the card shows.
+
 Exact figures are still available, in a collapsed **Jadual nilai penuh** table, so the
 default view stays compact without losing any numbers.
