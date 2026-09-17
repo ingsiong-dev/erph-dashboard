@@ -359,7 +359,7 @@ function __onSignIn(resp) {
 /* In-app browser warning (Google blocks OAuth in embedded webviews). */
 (function () {
   var ua = navigator.userAgent || '';
-  if (/(Telegram|WhatsApp|FBAN|FBAV|FB_IAB|Instagram|Line/|MicroMessenger|Twitter)/i.test(ua)) {
+  if (/(Telegram|WhatsApp|FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Twitter)/i.test(ua)) {
     document.getElementById('g-inapp').style.display = 'block';
   }
 })();
