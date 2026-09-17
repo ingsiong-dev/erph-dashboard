@@ -106,6 +106,20 @@
   }
 
   function onSignIn(resp) {
+    /* Google calls this either with {credential} on success, {error} on
+       failure/cancel, or not at all (e.g. the popup is swallowed by an
+       embedded webview). Surface all of it instead of a silent blank page. */
+    if (resp && resp.error) {
+      statusEl.innerHTML = '<span class="bad">Log masuk tidak selesai.</span>';
+      diag('Google returned error: ' + resp.error +
+           '  (popup_closed_by_user = pengguna tutup popup; user_cancelled = batal)');
+      return;
+    }
+    if (!resp || !resp.credential) {
+      statusEl.innerHTML = '<span class="bad">Tiada credential dikembalikan.</span>';
+      diag('Biasa berlaku dalam pelayar dalam-app (Telegram/WhatsApp) atau popup disekat. UA: ' + navigator.userAgent);
+      return;
+    }
     var payload = decodeJwt(resp.credential);
     var box = document.getElementById('result');
     box.style.display = 'block';
