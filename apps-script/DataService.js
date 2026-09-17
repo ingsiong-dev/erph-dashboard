@@ -9,6 +9,35 @@ const SPREADSHEET_ID = '1hMJgrjQxVVBobkgTGmZEO7BXgruIRDYlPQeT3tsg9UM';
 const CACHE_KEY = 'ERPH_DASHBOARD_DATA_CACHE';
 const CACHE_TTL_SECONDS = 300; // 5-minute global cache
 
+/* The denominator for EVERY percentage the portal shows: the number of school
+   weeks in the year. Deliberately a CONSTANT, not the current week.
+   Set 16 Sep 2026 on the user's instruction so the portal, the new submit page
+   and the old Looker report all show the same
+   "Jumlah Minggu Persekolahan Tahun 2026" = 47.
+   Consequence to be aware of: "100% Compliant" (=== 47) cannot be reached until
+   week 47, and the "behind by 5 weeks" notice will flag most staff until then. */
+const SCHOOL_TOTAL_WEEKS = 47;
+
+/**
+ * Tolerant week parser. Accepts only unambiguous shapes:
+ *   12 | M12 | M 12 | MINGGU 12 | MINGGU KE 12 | WEEK 12
+ * Anything else returns 0 and is NOT counted.
+ *
+ * Why not parseInt(str.replace(/\D/g,'')): that silently invented numbers from
+ * ambiguous text - "20 & 21" became week 2021 and "MINGGU KE 16 SAINS TING.5"
+ * became week 165 (both then discarded by the range filter, so the rows simply
+ * vanished), while "3A" was counted as week 3. Real rows in the sheet use all of
+ * these forms, so the row is dropped VISIBLY here rather than counted wrongly.
+ */
+function parseWeek_(value) {
+  const s = String(value == null ? '' : value).trim().toUpperCase();
+  if (!s) return 0;
+  const m = s.match(/^(?:M|MINGGU|WEEK)?\s*(?:KE)?\s*(\d{1,2})$/);
+  if (!m) return 0;
+  const n = Number(m[1]);
+  return (n >= 1 && n <= SCHOOL_TOTAL_WEEKS) ? n : 0;
+}
+
 // Wrap everything inside this namespace object
 const DataService = {
 
@@ -30,9 +59,9 @@ const DataService = {
 
     let currentCalculatedWeek = Math.floor(daysDiff / 7) + 1;
 
-    // Safety bounds: never below week 1, never above week 42
+    // Safety bounds: never below week 1, never above the school-year week count.
     if (currentCalculatedWeek < 1) currentCalculatedWeek = 1;
-    if (currentCalculatedWeek > 42) currentCalculatedWeek = 42;
+    if (currentCalculatedWeek > SCHOOL_TOTAL_WEEKS) currentCalculatedWeek = SCHOOL_TOTAL_WEEKS;
 
     return currentCalculatedWeek;
   },
@@ -43,19 +72,23 @@ const DataService = {
   getDashboardMasterData: function(forceRefresh = false) {
     const cache = CacheService.getScriptCache();
 
-    // Always compute the CURRENT week first — this must never come from cache.
-    const TOTAL_WEEKS = this._calculateCurrentWeek();
+    // Denominator for every percentage on the portal: the school-year week count.
+    const TOTAL_WEEKS = SCHOOL_TOTAL_WEEKS;
+
+    // The current week is still computed - but ONLY for the cache-rollover guard
+    // below. It is never used as a denominator any more.
+    const CURRENT_WEEK = this._calculateCurrentWeek();
 
     // 1. Safe Cache Retrieval — but only use the cached payload if it was built
-    //    for the SAME week number we just calculated. If the week has rolled
-    //    over (e.g. Monday just passed), the cache is treated as stale even if
-    //    its 5-minute TTL hasn't expired yet.
+    //    for the SAME current week. If the week has rolled over (e.g. Monday just
+    //    passed), the cache is treated as stale even if its 5-minute TTL hasn't
+    //    expired yet.
     if (!forceRefresh) {
       try {
         const cachedRaw = cache.get(CACHE_KEY);
         if (cachedRaw) {
           const cachedPayload = JSON.parse(cachedRaw);
-          if (cachedPayload.totalWeeks === TOTAL_WEEKS) {
+          if (cachedPayload.currentWeek === CURRENT_WEEK) {
             return cachedPayload;
           }
           // else: week changed since this was cached -> fall through and recompute
@@ -121,7 +154,7 @@ const DataService = {
           timestamp: timestamp ? new Date(timestamp).getTime() : null,
           formattedDate: timestamp ? Utilities.formatDate(new Date(timestamp), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm") : "",
           driveUrl: driveUrl,
-          week: parseInt(weekStr.toString().replace(/\D/g, '')) || 0,
+          week: parseWeek_(weekStr),
           subject: subject,
           status: status
         };
@@ -166,7 +199,8 @@ const DataService = {
 
     const payload = {
       teachers: processedTeachers,
-      totalWeeks: TOTAL_WEEKS, // stored so future calls can detect a stale cache
+      totalWeeks: TOTAL_WEEKS,   // 47 - what every screen divides by
+      currentWeek: CURRENT_WEEK, // only used to detect a stale cache
       lastUpdated: Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd HH:mm:ss")
     };
 
@@ -181,7 +215,17 @@ const DataService = {
   }
 };
 
-// Expose the method globally so google.script.run can still see it directly from the front-end
-function getDashboardMasterData(forceRefresh) {
+/**
+ * The dashboard dataset, exposed to the client.
+ *
+ * LOGIN REQUIRED (17 Sep 2026): the Google ID token is the FIRST argument and is
+ * checked here before anything is read. google.script.run is reachable from any
+ * page this script serves, so this function must check the token itself rather
+ * than trust the render gate in doGet() - a gate you can walk around is not a
+ * gate. identitiDariToken_() (Code.js) verifies the token with Google and then
+ * checks the address against the DELIMA roster.
+ */
+function getDashboardMasterData(token, forceRefresh) {
+  identitiDariToken_(token);
   return DataService.getDashboardMasterData(forceRefresh);
 }

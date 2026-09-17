@@ -2,6 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- This page is served with ?token=<Google ID token> in its URL. A referrer
+       policy of no-referrer keeps the token out of the Referer header of the
+       fonts / Chart.js / SheetJS requests the page makes to public CDNs. -->
+  <meta name="referrer" content="no-referrer">
   <title>Data SMK Meradong</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
@@ -37,6 +42,16 @@
       
     </div>
   </div>
+
+  <!-- The verified identity for THIS page load: the visitor's own Google ID
+       token (every google.script.run call passes it - see Javascript.html) and the
+       account it belongs to. doGet() only renders this page at all when the token
+       verified against the DELIMA roster, so its presence means "logged in".
+
+       It is handed over in an ATTRIBUTE rather than as a <script> literal on
+       purpose: the template engine escapes it as an attribute, which is one
+       unambiguous context. Escaping a value into JS source is not. -->
+  <div id="portal-identiti" hidden data-ident="<?= identJson ?>"></div>
 
 <?!= include('Javascript'); ?>
 </body>

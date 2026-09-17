@@ -1,57 +1,480 @@
 <!doctype html>
-<html lang="en">
+<html lang="ms">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="theme-color" content="#0b4f9e">
 <title>Data SMK Meradong</title>
 <style>
-  html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #fff; }
-  iframe { display: block; border: 0; width: 100%; height: 100%; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; padding:0; height:100%; background:#fff;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif; color:#16202b; }
+  iframe { display:block; border:0; width:100%; height:100%; }
 
-  /* Loading state, hidden as soon as the app iframe reports load. */
+  /* ---------- the app view ---------- */
+  #app { display:none; height:100%; }
   #boot {
-    position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-    flex-direction: column; gap: 14px; background: #fff; z-index: 10;
-    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #5f6368;
-    transition: opacity .25s ease;
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    flex-direction:column; gap:14px; background:#fff; z-index:10;
+    font-size:15px; line-height:1.5; color:#5f6368; transition:opacity .25s ease;
   }
-  #boot.done { opacity: 0; pointer-events: none; }
-  .spinner {
-    width: 34px; height: 34px; border: 3px solid #e0e0e0; border-top-color: #1a73e8;
-    border-radius: 50%; animation: spin .8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
+  #boot.done { opacity:0; pointer-events:none; }
+  .spinner { width:34px; height:34px; border:3px solid #e0e0e0; border-top-color:#1a73e8;
+    border-radius:50%; animation:spin .8s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ---------- the sign-in gate ---------- */
+  /* .card uses margin:auto rather than the container using align-items:center:
+     a flex container centred with align-items CLIPS the top of an over-tall child
+     (a small phone in landscape), and the card is the one thing that must never
+     be cut off. overflow:auto is the scroll container for that case. */
+  #gate { position:fixed; inset:0; display:flex; z-index:20; overflow:auto; padding:18px;
+    background:linear-gradient(180deg,#e9f1fa 0%,#eef2f7 40%,#edf4f0 100%); }
+  .card { width:100%; max-width:420px; margin:auto; background:#fff; border-radius:18px;
+    padding:26px 22px; text-align:center; box-shadow:0 12px 40px rgba(16,32,48,.14); }
+  .card .logo { height:60px; width:auto; display:block; margin:0 auto 10px; }
+  .brand { font-size:20px; font-weight:800; color:#0b4f9e; letter-spacing:.2px; }
+  .brand small { display:block; font-weight:500; font-size:13.5px; color:#6b7c90; letter-spacing:0; }
+  .card h1 { font-size:19.5px; margin:18px 0 6px; }
+  .sub { font-size:14px; color:#6b7c90; margin:0 0 18px; }
+  .g-btn { display:inline-flex; align-items:center; justify-content:center; gap:10px;
+    background:#fff; color:#3c4043; border:1px solid #dadce0; border-radius:8px;
+    padding:9px 16px; font-size:15px; font-weight:500; text-decoration:none;
+    min-height:44px; margin:4px 0 10px; box-sizing:border-box; }
+  .g-btn:hover, .g-btn:active { background:#f8f9fa; box-shadow:0 1px 3px rgba(60,64,67,.3); }
+  .g-btn:focus-visible { outline:3px solid #bcd6f5; outline-offset:2px; }
+  .g-btn .g-logo { width:20px; height:20px; flex:0 0 auto; }
+  .btn-wide { width:100%; }
+  .status { font-size:13.5px; color:#cf3b3b; margin:8px 0 0; min-height:18px; }
+  .status.busy { color:#6b7c90; }
+  .warn { background:#fff5e3; border:2px solid #f0c98a; color:#7a4e05; border-radius:12px;
+    padding:12px 14px; font-size:14px; margin:12px 0 0; text-align:left; }
+  .box { background:#f5f8fc; border:2px dashed #dde5ee; border-radius:12px; padding:12px 14px;
+    margin:0 0 16px; font-size:14px; text-align:left; word-break:break-word; }
+  .box.bad { background:#fdf0f0; border:2px solid #f0c4c4; color:#8a2b2b; }
+  .box .lbl { display:block; font-size:11.5px; text-transform:uppercase; letter-spacing:.4px;
+    opacity:.75; margin-bottom:4px; }
+  .steps { text-align:left; font-size:13.5px; color:#6b7c90; margin:16px 0 0; padding-left:20px; }
+  .steps li { margin-bottom:5px; }
+  .build { font-size:11px; color:#9aa7b4; margin:14px 0 0; letter-spacing:.3px; }
 </style>
 </head>
 <body>
 
-<div id="boot"><div class="spinner"></div><div>Memuatkan Portal Guru Data&hellip;</div></div>
+<!-- ============================ SIGN-IN GATE ==============================
+     This page is the ONE place the Google account chooser can be reached from.
+     An Apps Script page runs inside a sandboxed iframe and may not navigate to
+     accounts.google.com, which is why teachers whose phone default is a personal
+     Gmail used to hit a dead end. Here the page is top-level and unsandboxed, so
+     a normal full-page redirect to Google works - including inside Telegram's
+     and WhatsApp's in-app browsers, where a popup button does not.
+     ======================================================================== -->
+<div id="gate">
 
-<iframe id="app" title="Portal Guru Data" src="about:blank"
-        allow="clipboard-write; camera; microphone; geolocation"></iframe>
+  <div class="card" id="card-login">
+    <img class="logo" alt="Logo SMK Meradong" width="51" height="60"
+         src="https://ingsiong-dev.github.io/erph-dashboard/e-rph/logo.png">
+    <div class="brand">DATA SMK MERADONG<small>Portal Guru Data</small></div>
+    <h1>Log masuk dengan akaun Google</h1>
+    <p class="sub">Pilih akaun yang berakhir dengan <strong>@moe-dl.edu.my</strong>.</p>
+
+    <!-- A REAL LINK, never a popup or window.open: in-app browsers block those,
+         and the whole point of this page is that it works on a phone. -->
+    <a id="btn-google" class="g-btn btn-wide" href="#">
+      <svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+      </svg>
+      <span>Log masuk dengan akaun Google</span>
+    </a>
+
+    <p id="g-status" class="status"></p>
+
+    <p id="g-inapp" class="warn" style="display:none">
+      Anda buka dalam pelayar dalam-app (Telegram/WhatsApp). Jika pemilihan akaun
+      Google tidak muncul, ketik <strong>⋯</strong> → buka dalam <strong>Chrome/Safari</strong>,
+      kemudian cuba lagi.
+    </p>
+
+    <ol class="steps">
+      <li>Ketik butang di atas.</li>
+      <li>Pilih akaun sekolah <strong>@moe-dl.edu.my</strong> anda.</li>
+      <li>Portal akan terbuka sendiri. Kali seterusnya anda tidak perlu log masuk lagi.</li>
+    </ol>
+
+    <p class="build" id="g-build"></p>
+  </div>
+
+  <div class="card" id="card-denied" style="display:none">
+    <img class="logo" alt="Logo SMK Meradong" width="51" height="60"
+         src="https://ingsiong-dev.github.io/erph-dashboard/e-rph/logo.png">
+    <div class="brand">DATA SMK MERADONG<small>Portal Guru Data</small></div>
+    <h1>Akses ditolak</h1>
+    <p class="sub">Akaun Google ini bukan akaun guru sekolah ini.</p>
+    <div class="box bad">
+      <span class="lbl">Sebab</span>
+      <span id="d-reason">—</span>
+    </div>
+    <a class="g-btn btn-wide" href="?switch=1">
+      <span>Tukar akaun Google</span>
+    </a>
+    <ol class="steps">
+      <li>Ketik butang di atas.</li>
+      <li>Pilih akaun yang berakhir dengan <strong>@moe-dl.edu.my</strong>.</li>
+      <li>Jika akaun sekolah tiada dalam senarai, ketik "Use another account".</li>
+    </ol>
+  </div>
+
+  <div class="card" id="card-error" style="display:none">
+    <div class="brand">DATA SMK MERADONG<small>Portal Guru Data</small></div>
+    <h1>Masalah sementara</h1>
+    <p class="sub" id="e-msg">—</p>
+    <a class="g-btn btn-wide" href="?switch=1">Cuba log masuk semula</a>
+  </div>
+
+</div>
+
+<!-- ============================== THE APP ============================== -->
+<div id="app">
+  <div id="boot"><div class="spinner"></div><div>Memuatkan Portal Guru Data&hellip;</div></div>
+  <iframe id="frame" title="Portal Guru Data" src="about:blank"
+          allow="clipboard-write; camera; microphone; geolocation"></iframe>
+</div>
 
 <script>
-  /* Live web app URL - the same deployment ID as the direct Google link, so this
-     page and the Google link always show the same app. Anonymous access.
-     Changing what appears here requires an Apps Script deploy, not a GitHub push. */
-  var EXEC_URL = 'https://script.google.com/macros/s/AKfycbxmx8KXaam55fnjnEMCVr-p_kl9m-5fI64a3YrFphgzF1pEeNF50Pjn6THIY3_XIKan/exec';
+/* ============================================================================
+   DATA SMK MERADONG - sign-in gate.
 
-  var frame = document.getElementById('app');
-  var boot  = document.getElementById('boot');
+   The portal itself is an Apps Script web app. It CANNOT be served to a browser
+   whose active Google account is the wrong one (Google does not support
+   multi-login for Apps Script web apps - the teacher gets a Drive error page,
+   not a login screen). So this page - static, hosted on GitHub Pages, loads for
+   anyone - does the sign-in and then frames the app with the resulting ID token.
 
-  // Optional override for testing:  index.html?exec=<other /exec URL>
-  var q = new URLSearchParams(location.search);
-  var base = q.get('exec') || EXEC_URL;
+   The backend is still the only authority: doGet() verifies the token with
+   Google and checks the address against the DELIMA roster before it renders
+   anything, and every data function re-checks the same token on every call.
 
-  // Forward any extra query parameters through to the web app.
-  q.delete('exec');
-  var qs = q.toString();
+   Three things here are load-bearing, and each was a real bug once (see
+   Google_login_page.md):
+     1. __handleOAuthReturn() runs BEFORE __wireGoogleButton(). A login is TWO
+        loads of this page; wiring the button first would overwrite the stored
+        nonce/state and reject every real login.
+     2. The button is a real <a href> doing a FULL-PAGE redirect, not a popup.
+        Popups are blanked inside Telegram/WhatsApp webviews.
+     3. The dead token's email is read BEFORE the token is deleted - that address
+        is the login_hint that makes silent re-login work on a multi-account
+        phone, and it is the only thing that makes it work.
+   ========================================================================== */
+var PORTAL = {
+  exec: 'https://script.google.com/macros/s/AKfycbxmx8KXaam55fnjnEMCVr-p_kl9m-5fI64a3YrFphgzF1pEeNF50Pjn6THIY3_XIKan/exec',
+  clientId: '314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com',
+  /* Must equal the Authorized redirect URI in the Google Cloud console
+     CHARACTER FOR CHARACTER, trailing slash included. A mismatch shows the
+     teacher a raw redirect_uri_mismatch page. */
+  redirectUri: 'https://ingsiong-dev.github.io/erph-dashboard/',
+  build: 'p1-2026-09-17',
+  token: null
+};
 
-  frame.addEventListener('load', function () { boot.classList.add('done'); });
-  frame.src = base + (qs ? (base.indexOf('?') === -1 ? '?' : '&') + qs : '');
+/* Optional override for testing:  index.html?exec=<other /exec URL> */
+var Q = new URLSearchParams(location.search);
+if (Q.get('exec')) PORTAL.exec = Q.get('exec');
 
-  // Safety net: never leave the spinner up forever.
-  setTimeout(function () { boot.classList.add('done'); }, 8000);
+function $(id) { return document.getElementById(id); }
+
+/* ---- tiny storage helpers (every one of them must survive blocked storage,
+   which happens in private-browsing modes - the population this page exists for
+   is exactly the one that uses those) ---------------------------------------- */
+function __lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+function __lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+function __lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} }
+function __ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+function __ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function __ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+
+function __rand() {
+  var a = new Uint8Array(16);
+  try { crypto.getRandomValues(a); }
+  catch (e) { for (var i = 0; i < 16; i++) a[i] = Math.floor(Math.random() * 256); }
+  var s = '';
+  for (var j = 0; j < a.length; j++) s += ('0' + a[j].toString(16)).slice(-2);
+  return s;
+}
+
+function __decodeJwt(t) {
+  try {
+    var p = t.split('.');
+    if (p.length < 2) return null;
+    p = p[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (p.length % 4) p += '=';
+    return JSON.parse(decodeURIComponent(escape(atob(p))));
+  } catch (e) { return null; }
+}
+
+function __authUrl(opt) {
+  opt = opt || {};
+  var nonce = __rand(), state = __rand();
+  __ssSet('portal-nonce', nonce);
+  __ssSet('portal-state', state);
+  var p = {
+    client_id: PORTAL.clientId,
+    redirect_uri: PORTAL.redirectUri,
+    response_type: 'id_token',
+    scope: 'openid email profile',
+    nonce: nonce,
+    state: state,
+    prompt: opt.prompt || 'select_account',   // <- the account chooser
+    hd: 'moe-dl.edu.my'                       // <- narrow the list to school accounts
+  };
+  if (opt.loginHint) p.login_hint = opt.loginHint;
+  return 'https://accounts.google.com/o/oauth2/v2/auth?' +
+    Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&');
+}
+
+/* Handing an already-expired token to the backend would only bounce the teacher
+   back here, so it is checked locally first. Google's exp is the authority. */
+function __tokenUsable(t) {
+  var c = __decodeJwt(t);
+  return !!c && (!c.exp || c.exp * 1000 > Date.now() + 30000);
+}
+
+function __setStatus(msg, busy) {
+  var el = $('g-status');
+  if (!el) return;
+  el.textContent = msg || '';
+  el.className = 'status' + (busy ? ' busy' : '');
+}
+
+function __showGate(msg) {
+  $('card-login').style.display = 'block';
+  $('card-denied').style.display = 'none';
+  $('card-error').style.display = 'none';
+  $('gate').style.display = 'flex';
+  $('app').style.display = 'none';
+  if (msg) __setStatus(msg);
+}
+
+function __showDenied(reason) {
+  $('d-reason').textContent = reason || 'Akaun ini tiada dalam senarai guru sekolah ini.';
+  $('card-login').style.display = 'none';
+  $('card-denied').style.display = 'block';
+  $('card-error').style.display = 'none';
+  $('gate').style.display = 'flex';
+  $('app').style.display = 'none';
+}
+
+function __showError(msg) {
+  $('e-msg').textContent = msg || 'Cuba lagi sebentar.';
+  $('card-login').style.display = 'none';
+  $('card-denied').style.display = 'none';
+  $('card-error').style.display = 'block';
+  $('gate').style.display = 'flex';
+  $('app').style.display = 'none';
+}
+
+/* Ask the backend who this token belongs to, BEFORE the app is loaded. A teacher
+   who signed in with the wrong Google account gets a denial screen with a real
+   "tukar akaun" button here, instead of an empty frame. */
+function __verify(token) {
+  return fetch(PORTAL.exec, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'whoami', token: token })
+  }).then(function (r) { return r.json(); });
+}
+
+function __startApp(token) {
+  $('gate').style.display = 'none';
+  $('app').style.display = 'block';
+  var frame = $('frame');
+  frame.addEventListener('load', function () { $('boot').classList.add('done'); });
+  /* The token rides in the QUERY string, not the fragment: doGet() has to be able
+     to read it, and a fragment never reaches a server. Two consequences, both
+     handled: Index.html carries <meta name="referrer" content="no-referrer"> so
+     the token cannot leak through the Referer header of the page's CDN requests,
+     and the page itself is never cached with the token in it (Apps Script serves
+     it no-store). */
+  frame.src = PORTAL.exec + '?token=' + encodeURIComponent(token);
+  setTimeout(function () { $('boot').classList.add('done'); }, 20000);
+}
+
+/* The token lives in localStorage so it survives a NEW TAB - a link tapped in
+   WhatsApp or Telegram opens one, and sessionStorage would be empty there. The
+   nonce/state stay session-scoped on purpose: they belong to one attempt, and
+   sharing them across tabs would break a parallel sign-in. */
+function __accept(token) {
+  PORTAL.token = token;
+  __lsSet('portal-token', token);
+  __setStatus('Mengesahkan akaun\u2026', true);
+
+  __verify(token).then(function (res) {
+    if (res && res.ok) { __startApp(token); return; }
+    var code = (res && res.code) || 'E_LAIN';
+    if (code === 'E_ROSTER') { __lupakanAkaunDitolak_(token); __showDenied(String((res && res.error) || '')); return; }
+    if (code === 'E_TOKEN' || code === 'E_LOGIN') {
+      __lsDel('portal-token'); PORTAL.token = null;
+      __showGate('Sesi log masuk telah tamat. Ketik butang untuk log masuk semula.');
+      return;
+    }
+    /* Anything else (a quota trip, a missing permission, a bad request) is NOT a
+       login problem - keep the token so a retry can succeed. */
+    __showError('Pelayan portal tidak dapat mengesahkan log masuk: ' + ((res && res.error) || code));
+  }, function (e) {
+    __showError('Tidak dapat menghubungi pelayan portal. Cuba muat semula halaman. (' + e + ')');
+  });
+}
+
+/* A REFUSED account must NOT be remembered.
+   The teacher's own words, from the same problem in the e-RPH app (18 Sep 2026):
+   "i try login with non-teacher acc. now it keep remember it." A valid token for
+   an account that is not on the roster would otherwise be resumed on EVERY visit,
+   so the phone reproduces the refusal forever and the app's own "cuba lagi" just
+   re-sends the same dead token.
+   Deleting it is also what disarms the SILENT hop: __boot() only asks Google
+   silently for a device that still holds a token (and takes its login_hint from
+   that token), so with none stored the next tap reaches the account chooser -
+   the only way out.
+   The shared e-RPH token is dropped too when it is the SAME token: both front
+   ends gate on the SAME DELIMA roster, so a token that roster rejects is dead for
+   both and clearing it cannot sign anyone out of anything usable. */
+function __lupakanAkaunDitolak_(token) {
+  __lsDel('portal-token');
+  PORTAL.token = null;
+  if (__lsGet('erph-token') === token) __lsDel('erph-token');
+}
+
+/* SILENT re-login: prompt=none asks Google for a fresh token with no screen and
+   no tap, because this device already consented. Guarded three ways - it runs
+   only when a DEAD token proves the device signed in before, a per-tab flag makes
+   it ONE-SHOT so a refusal can never become a redirect loop, and __ssGet(
+   'portal-silent') marks the in-flight attempt so a refusal shows the plain gate
+   instead of accusing the teacher of cancelling something they never saw. */
+function __trySilent(hint) {
+  if (__ssGet('portal-silent-done') === '1') return false;
+  __ssSet('portal-silent-done', '1');
+  __ssSet('portal-silent', '1');
+  location.replace(__authUrl({ prompt: 'none', loginHint: hint }));
+  return true;
+}
+
+function __wireGoogleButton() {
+  var b = $('btn-google');
+  if (b) b.href = __authUrl();
+}
+
+function __handleOAuthReturn() {
+  var h = location.hash;
+  if (!h || h.length < 2) return false;
+
+  var params = {};
+  h.slice(1).split('&').forEach(function (kv) {
+    var i = kv.indexOf('=');
+    params[decodeURIComponent(i < 0 ? kv : kv.slice(0, i))] = (i < 0) ? '' : decodeURIComponent(kv.slice(i + 1));
+  });
+  function clearHash() {
+    try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  }
+
+  var wasSilent = __ssGet('portal-silent') === '1';
+  __ssDel('portal-silent');
+
+  if (params.error) {
+    clearHash();
+    /* A silent attempt is ALLOWED to fail - the gate is its fallback, so it must
+       not tell the teacher they cancelled something they never saw. */
+    if (!wasSilent) __setStatus('Log masuk dibatalkan. Cuba lagi.');
+    return true;
+  }
+
+  var token = params.id_token;
+  if (!token) return false;
+
+  var wantState = __ssGet('portal-state'), wantNonce = __ssGet('portal-nonce');
+  var claims = __decodeJwt(token);
+  /* A short reason code rides in the message so one phone screenshot tells WHICH
+     check failed: J = token unreadable, S = state, N = nonce. */
+  var why = !claims ? 'J'
+          : (wantState && params.state !== wantState) ? 'S'
+          : (wantNonce && claims.nonce !== wantNonce) ? 'N'
+          : '';
+  if (why) {
+    __setStatus('Pengesahan log masuk gagal (kod ' + why + '). Cuba lagi.');
+    clearHash();
+    return true;
+  }
+
+  __ssDel('portal-state'); __ssDel('portal-nonce');
+  clearHash();   // the token must not stay in the address bar
+  __accept(token);
+  return true;
+}
+
+function __boot() {
+  /* 1. finish a returning sign-in. ALWAYS first: __wireGoogleButton() (at the
+        tail of this script) replaces the stored nonce/state, so handling the
+        return after it would reject the very login Google just completed. */
+  if (__handleOAuthReturn()) return;
+
+  /* 2. "Tukar akaun Google": forget the stored token and ALWAYS show the chooser.
+        Without the silent-done flag the next step would be a prompt=none hop that
+        silently signs the same wrong account back in. */
+  if (Q.get('switch') === '1') {
+    __lsDel('portal-token');
+    PORTAL.token = null;
+    __ssSet('portal-silent-done', '1');
+    __setStatus('Pilih akaun @moe-dl.edu.my anda.');
+    return;
+  }
+
+  var t = __lsGet('portal-token');
+  if (t && __tokenUsable(t)) { __accept(t); return; }   // 3. still signed in
+
+  /* 4. the device signed in before, so ask Google silently for a new token.
+        Read the dead token's EMAIL first: that is the login_hint, and on a phone
+        with several Google accounts it is the only thing that makes the silent
+        hop land on the right one. */
+  var hint = null;
+  if (t) {
+    var c = __decodeJwt(t);
+    if (c && c.email) hint = c.email;
+    __lsDel('portal-token');
+  }
+  if (t) { __trySilent(hint); return; }
+
+  /* 5. never signed in on THIS browser - but the e-RPH app is on the SAME origin
+        with the SAME Google client and the SAME roster, so a teacher who has
+        already signed in there is let straight through. Only consulted when this
+        app has no token of its own. */
+  var shared = __lsGet('erph-token');
+  if (shared && __tokenUsable(shared)) { __accept(shared); return; }
+
+  /* 6. first visit: leave the gate up for a manual tap. */
+  __setStatus('');
+}
+
+/* In-app browser hint. The full-page redirect does work inside Telegram, so this
+   is only a fallback note for webviews that still block Google outright. */
+(function () {
+  var ua = navigator.userAgent || '';
+  if (/(Telegram|WhatsApp|FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Twitter)/i.test(ua)) {
+    var el = $('g-inapp');
+    if (el) el.style.display = 'block';
+  }
+})();
+
+(function () {
+  var b = $('g-build');
+  if (b) b.textContent = 'versi ' + PORTAL.build;
+})();
+
+/* ORDER MATTERS. __boot() first, so a returning #id_token is validated against
+   the nonce/state the PREVIOUS load stored; re-wiring the button first would
+   overwrite them with fresh randoms and reject every real login. */
+__boot();
+__wireGoogleButton();
 </script>
 
 </body>

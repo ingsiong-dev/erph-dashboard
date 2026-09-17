@@ -222,10 +222,13 @@
       })
       .withFailureHandler(function (err) {
         KH_LOADING = false;
+        // An expired/denied identity needs "log masuk semula", not "cuba lagi".
+        var kod = portalAuthErrorCode_(err);
+        if (kod) showPortalLoginNotice_(kod);
         khSetStatus('Gagal memuatkan data kehadiran: ' +
           ((err && err.message) ? err.message : err), true);
       })
-      .getKehadiranAnalysis();
+      .getKehadiranAnalysis(portalToken());
   }
 
   function renderKehadiranModule() {

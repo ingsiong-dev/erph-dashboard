@@ -16,6 +16,86 @@ let APP_STATE = {
 /**
  * Global Initialization Routine Lifecycle Node Point Context Execution Hook
  */
+/**
+ * LOGIN IDENTITY for this page load.
+ *
+ * doGet() renders this page ONLY when the ?token=... it was given verified with
+ * Google AND the address is on the DELIMA roster. The identity is handed over in
+ * the #portal-identiti attribute (see Index.html), and every backend call below
+ * passes the token along, because google.script.run is reachable from any page
+ * this script serves - so the server must re-check the token on every call, not
+ * just when it drew the page.
+ */
+var PORTAL_IDENTITI = (function () {
+  var el = document.getElementById('portal-identiti');
+  if (!el) return { token: '', email: '' };
+  try {
+    var parsed = JSON.parse(el.getAttribute('data-ident') || '{}');
+    return { token: parsed.token || '', email: parsed.email || '' };
+  } catch (e) {
+    return { token: '', email: '' };
+  }
+})();
+
+/** The Pages front end - the only place the Google account chooser can open. */
+var PORTAL_LOGIN_URL = 'https://ingsiong-dev.github.io/erph-dashboard/';
+
+function portalToken() { return PORTAL_IDENTITI.token || ''; }
+
+/**
+ * Server errors carry a code: [E_LOGIN]/[E_TOKEN] mean "log in again",
+ * [E_ROSTER] means "this account is not allowed". Quota and network failures
+ * carry neither, and need completely different advice - telling a teacher to log
+ * in again because Sheets was busy would send them round a loop that cannot help.
+ */
+function portalAuthErrorCode_(error) {
+  var m = /\[(E_[A-Z]+)\]/.exec(String((error && error.message) || error || ''));
+  return m ? m[1] : '';
+}
+
+/**
+ * A one-tap way back. Open in a NEW browser context the sandbox of an Apps
+ * Script page cannot navigate itself - location.href is refused and a script
+ * .click() is not a user activation - so this is a REAL link with
+ * target="_top", which is the one form of navigation the sandbox allows.
+ * The server renders LogMasuk.html in the same situation; this covers the case
+ * where the session dies AFTER the page has already been drawn (an ID token
+ * lives one hour).
+ */
+function showPortalLoginNotice_(kod) {
+  if (document.getElementById('portal-login-notice')) return;
+
+  var host = document.getElementById('content-area') || document.body;
+  var box = document.createElement('div');
+  box.id = 'portal-login-notice';
+
+  var tajuk = document.createElement('strong');
+  tajuk.textContent = (kod === 'E_ROSTER')
+    ? 'Akses ditolak untuk akaun ini.'
+    : 'Sesi log masuk telah tamat.';
+
+  var msg = document.createElement('div');
+  msg.style.margin = '6px 0 10px';
+  msg.textContent = (kod === 'E_ROSTER')
+    ? 'Akaun Google yang anda guna tiada dalam senarai guru sekolah ini. Log masuk dengan akaun @moe-dl.edu.my anda.'
+    : 'Token log masuk Google hanya sah selama satu jam. Log masuk semula untuk meneruskan.';
+
+  var a = document.createElement('a');
+  a.href = PORTAL_LOGIN_URL + '?switch=1';
+  a.target = '_top';
+  a.className = 'btn-report-download action-xlsx';
+  a.style.display = 'inline-block';
+  a.style.textDecoration = 'none';
+  a.textContent = (kod === 'E_ROSTER') ? 'Tukar akaun Google' : 'Log masuk semula';
+
+  box.appendChild(tajuk);
+  box.appendChild(msg);
+  box.appendChild(a);
+  box.className = 'report-action-selection-card';
+  box.style.margin = '0 0 16px 0';
+  host.insertBefore(box, host.firstChild);
+}
+
 document.addEventListener("DOMContentLoaded", function() {
   fetchSystemAnalyticsDatasetPayload(false);
 });
@@ -52,7 +132,7 @@ function fetchSystemAnalyticsDatasetPayload(forceRefresh = false) {
     .withFailureHandler(function(error) {
       handleDashboardLoadFailure(error);
     })
-    .getDashboardMasterData(forceRefresh);
+    .getDashboardMasterData(portalToken(), forceRefresh);
 }
 
 function forceSystemDataRefresh() {
@@ -77,6 +157,17 @@ function handleDashboardLoadFailure(error) {
   if (spinner) spinner.classList.add('hidden');
 
   var label = document.getElementById('cache-timestamp-label');
+
+  // An identity failure is not a data failure: the advice is completely
+  // different, so it gets its own notice instead of the quota wording.
+  var kod = portalAuthErrorCode_(error);
+  if (kod) {
+    if (label) label.innerText = 'Sync status: Sesi log masuk tamat';
+    switchActiveView('dashboard');
+    showPortalLoginNotice_(kod);
+    return;
+  }
+
   if (label) label.innerText = 'Sync status: Gagal - klik Sync Database';
 
   // Keep every other module reachable - Kehadiran, Enrolmen and Guru each fetch

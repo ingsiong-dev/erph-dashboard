@@ -13,25 +13,53 @@ Script user" bar in the top-level window, so framing removes it.
 Because the wrapper is only a frame, **pushing to GitHub cannot change what teachers see**.
 A visible change always needs a `clasp` deploy (below).
 
-## This app has no admin and no login
+## Login is required (from 17 Sep 2026)
 
-Every visitor sees the same dashboard. There is no PIN, no role check and no access gate.
-That is deliberate and is enforced in code:
+The portal is no longer public. Opening either link shows a **Google sign-in page**
+first, and only teachers on the **DELIMA** roster of the eRPH workbook get in.
 
-- `apps-script/Code.js` — `doGet()` renders the dashboard unconditionally.
-- There is **exactly one** `include()` definition. An earlier version had two, and the
-  second one called `Session.getActiveUser()` to label the owner `-ADMIN`; because
-  JavaScript keeps the *last* definition, it silently won and made the navbar label
-  **empty for public visitors**. Do not add a second `include()` or `doGet()`.
-- The dead `isUserAuthorized()` (DELIMA email allow-list) was removed from `DataService.js`.
-- The unreachable "Access Denied" screen was removed from `Index.html`.
+**Why it is built this way.** An Apps Script web app cannot be served to a browser
+whose active Google account is the "wrong" one — Google does not support multi-login
+for Apps Script web apps, and the teacher gets a Drive error page instead of a login
+screen. So the sign-in happens on the **Pages** page (static, top-level, unsandboxed,
+where Google's account chooser can actually open), and the app is then framed with the
+resulting ID token.
+
+Two layers, and both are load-bearing:
+
+1. `doGet()` needs `?token=<Google ID token>`. Without one — or with one the script
+   cannot verify — it renders `LogMasuk.html` instead of the portal.
+2. **Every data function takes the token as its FIRST argument** and re-checks it
+   before it reads anything. `google.script.run` is reachable from any page the script
+   serves, so a render gate alone would be a gate you can walk around.
+
+`Code.js` verifies the token **with Google** (`tokeninfo`: `aud` / `iss` /
+`email_verified` / `exp`) and then checks the address against the DELIMA roster. The
+domain alone is deliberately not enough: `moe-dl.edu.my` covers every school in
+Malaysia, so a domain-only gate would let the whole country read this school's data.
+
+Both front ends use the **same OAuth client and the same roster** as the e-RPH teacher
+app, so a teacher who has already signed in there is let straight through.
+
+### Two one-time steps if this is ever rebuilt
+
+| # | Where | What |
+|---|---|---|
+| 1 | Google Cloud Console → the OAuth 2.0 client | Add `https://ingsiong-dev.github.io/erph-dashboard/` to **Authorized redirect URIs** — exactly, trailing slash included. A mismatch shows the teacher a raw `redirect_uri_mismatch` page. |
+| 2 | Apps Script editor → Run | Run **`ujianLogin`** once and click **Allow**. `UrlFetchApp` is a scope this project never used, and only a human can grant it. Until it is granted, nobody can log in. |
+
+`ujianLogin` logs three lines (tokeninfo works, the DELIMA tab reads, the roster
+resolves). The expected tokeninfo line is a *rejection*: the test token is a dummy.
+
 
 ## Layout
 
 ```
-index.html            GitHub Pages wrapper (this is what the live link serves)
+index.html            GitHub Pages wrapper AND the Google sign-in gate (this is what the live link serves)
 apps-script/          the actual Apps Script project — open this folder to use clasp
-  Code.js             doGet() + include() + the Kehadiran and Enrolmen backends
+  Code.js             doGet() login gate + token/roster verification + include()
+                      + the Kehadiran and Enrolmen backends
+  LogMasuk.html       the in-app login / "access denied" page (for direct /exec visits)
   DataService.js      data layer: reads the Responses + DELIMA sheets, 5-min cache
   Index.html          page shell
   Navbar/Sidebar/Dashboard/TeacherList/TeacherDetail/Analytics/Reports.html
@@ -40,6 +68,11 @@ apps-script/          the actual Apps Script project — open this folder to use
   Styles.html, Javascript.html
   appsscript.json, .clasp.json
 ```
+
+**There is still exactly one `include()` and one `doGet()`.** An earlier version had two
+`include()` definitions; because JavaScript keeps the *last* one, it silently won and made
+the navbar label empty for public visitors. Do not add a second one — `test-portal-auth.mjs`
+asserts the count.
 
 `index.html` at the root and `apps-script/Index.html` are different files in different
 folders — keep it that way (Windows filenames are case-insensitive, so they cannot live
@@ -76,10 +109,12 @@ Rollback is instant because versions are immutable: re-deploy the previous versi
 
 ## Please note
 
-- **The repo is public** (free GitHub Pages requires it) and the app is `ANYONE_ANONYMOUS`,
-  so anyone with the link sees the dashboard — including teacher names and their
-  submission/compliance status. This was already true before the repo existed; the repo
-  just makes the URL easier to find.
+- **The repo is public** (free GitHub Pages requires it). The apps are
+  `ANYONE_ANONYMOUS` + `USER_DEPLOYING`, which is what lets the Pages gate call the
+  backend cross-origin; the gate is enforced **server-side** by the token check and the
+  DELIMA roster, not by the deployment's access setting. An anonymous request for data
+  is refused (`test-portal-auth.mjs` proves each of the four data functions rejects a
+  missing, forged, expired or non-roster token *before* it touches Drive or Sheets).
 - `apps-script/DataService.js` contains `SPREADSHEET_ID` (the eRPH data sheet). Publishing
   the ID does **not** grant access to the sheet, but it does advertise where the data lives.
   If that is a concern, move the ID into Script Properties and read it with
@@ -115,8 +150,9 @@ Only **2026** is offered; the 2014-2024 archive is ignored on purpose. Source of
 Drive folder `Enrolmen murid` (`1XNecX0c2PGhdnGCRFfFQQMc7LV9toSnK`), named
 `Laporan Enrolmen <Bulan> <Tahun>.pdf`.
 
-This module is **public** — anyone with the link can download any month's report (chosen
-deliberately). It needs the `drive` OAuth scope, which the script did not use before.
+This module needs the `drive` OAuth scope, which the script did not use before. It
+**requires a login** (the user first chose it to be public, then asked for the Google
+login page across the whole portal).
 
 ## The Kehadiran module (attendance analysis)
 

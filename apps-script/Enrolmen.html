@@ -61,8 +61,10 @@
     el.style.textAlign = 'left';
   }
 
-  // Loaded lazily, the first time the Kehadiran menu is opened. The server
+  // Loaded lazily, the first time the Enrolmen menu is opened. The server
   // result is cached for 5 minutes, so repeatedly switching views is cheap.
+  // A login is required: the token goes with every call and the server re-checks
+  // it, because a render-time gate alone would be walkable-around.
   function initEnrolmenModule() {
     if (ENROL_INDEX || ENROL_LOADING) return;
     ENROL_LOADING = true;
@@ -89,10 +91,13 @@
       })
       .withFailureHandler(function (err) {
         ENROL_LOADING = false;
+        // An expired/denied identity needs "log masuk semula", not "cuba lagi".
+        var kod = portalAuthErrorCode_(err);
+        if (kod) showPortalLoginNotice_(kod);
         setEnrolStatus('Gagal memuatkan senarai laporan: ' +
           ((err && err.message) ? err.message : err), true);
       })
-      .getEnrolmenIndex();
+      .getEnrolmenIndex(portalToken());
   }
 
   function renderEnrolMonths() {
@@ -181,8 +186,10 @@
       })
       .withFailureHandler(function (err) {
         if (btn) btn.disabled = false;
+        var kod = portalAuthErrorCode_(err);
+        if (kod) showPortalLoginNotice_(kod);
         setEnrolStatus('Gagal memuat turun: ' + ((err && err.message) ? err.message : err), true);
       })
-      .getEnrolmenReport(year, month);
+      .getEnrolmenReport(portalToken(), year, month);
   }
 </script>
