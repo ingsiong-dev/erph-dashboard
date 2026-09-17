@@ -337,6 +337,16 @@ function __loadApp() {
   document.body.appendChild(s1);
 }
 
+/* Hide the gate and bring up the app. If the app was already loaded and the
+   teacher is signing in AGAIN (token expired mid-session), a full reload is the
+   only clean reset - the reload then restores the new token (below) and loads
+   the app fresh, instead of leaving the old error screen behind. */
+function __startApp() {
+  document.getElementById('gate').style.display = 'none';
+  if (__erph.loaded) { location.reload(); return; }
+  __loadApp();
+}
+
 function __showGate(msg) {
   document.getElementById('gate').style.display = 'flex';
   var st = document.getElementById('g-status');
@@ -344,6 +354,7 @@ function __showGate(msg) {
 }
 function __sessionExpired(msg) {
   __erph.token = null;
+  try { sessionStorage.removeItem('erph-token'); } catch (e) { /* private mode */ }
   __showGate('Sesi log masuk telah tamat. Log masuk semula untuk meneruskan.');
 }
 
@@ -352,9 +363,19 @@ function __onSignIn(resp) {
   if (resp && resp.error) { st.textContent = 'Log masuk tidak selesai: ' + resp.error; return; }
   if (!resp || !resp.credential) { st.textContent = 'Tiada maklum balas dari Google. Cuba lagi.'; return; }
   __erph.token = resp.credential;
-  document.getElementById('gate').style.display = 'none';
-  __loadApp();
+  try { sessionStorage.setItem('erph-token', resp.credential); } catch (e) { /* private mode */ }
+  __startApp();
 }
+
+/* Restore a previously-saved token so a refresh / reopened tab does not force a
+   new sign-in. If it has expired, the first API call will bounce through
+   __sessionExpired() and the (already-rendered) button is ready to re-sign. */
+(function () {
+  try {
+    var t = sessionStorage.getItem('erph-token');
+    if (t) { __erph.token = t; __startApp(); }
+  } catch (e) { /* private mode: just show the gate */ }
+})();
 
 /* In-app browser warning (Google blocks OAuth in embedded webviews). */
 (function () {
