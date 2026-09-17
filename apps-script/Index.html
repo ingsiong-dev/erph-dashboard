@@ -48,10 +48,12 @@
        account it belongs to. doGet() only renders this page at all when the token
        verified against the DELIMA roster, so its presence means "logged in".
 
-       It is handed over in an ATTRIBUTE rather than as a <script> literal on
-       purpose: the template engine escapes it as an attribute, which is one
-       unambiguous context. Escaping a value into JS source is not. -->
-  <div id="portal-identiti" hidden data-ident="<?= identJson ?>"></div>
+       It is BASE64, not raw JSON, on purpose: base64 uses only A-Za-z0-9+/= ,
+       so no HTML-escaping rule can alter it and the attribute is byte-identical
+       whatever the template engine does. A raw JSON literal here would depend on
+       the engine escaping the quotes exactly right - and if it did not, the
+       portal would render and then fail every single data call. -->
+  <div id="portal-identiti" hidden data-ident="<?= identB64 ?>"></div>
 
 <?!= include('Javascript'); ?>
 </body>

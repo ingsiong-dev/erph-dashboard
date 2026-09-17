@@ -20,19 +20,36 @@ let APP_STATE = {
  * LOGIN IDENTITY for this page load.
  *
  * doGet() renders this page ONLY when the ?token=... it was given verified with
- * Google AND the address is on the DELIMA roster. The identity is handed over in
- * the #portal-identiti attribute (see Index.html), and every backend call below
- * passes the token along, because google.script.run is reachable from any page
- * this script serves - so the server must re-check the token on every call, not
- * just when it drew the page.
+ * Google AND the address is on the DELIMA roster. The identity is handed over
+ * base64-encoded in the #portal-identiti attribute (see Index.html for why base64
+ * rather than raw JSON), and every backend call below passes the token along,
+ * because google.script.run is reachable from any page this script serves - so
+ * the server must re-check the token on every call, not just when it drew the page.
+ *
+ * A decode failure is REPORTED, never swallowed: it would break every data call
+ * at once, and a silent empty token would turn that into a mystery.
  */
 var PORTAL_IDENTITI = (function () {
   var el = document.getElementById('portal-identiti');
   if (!el) return { token: '', email: '' };
+  var b64 = el.getAttribute('data-ident') || '';
+  if (!b64) return { token: '', email: '' };
   try {
-    var parsed = JSON.parse(el.getAttribute('data-ident') || '{}');
-    return { token: parsed.token || '', email: parsed.email || '' };
+    var parsed = JSON.parse(atob(b64));
+    if (!parsed.token) throw new Error('tiada token dalam identiti');
+    return { token: parsed.token, email: parsed.email || '' };
   } catch (e) {
+    // No login page to fall back to here (doGet already let this page render),
+    // so say what happened instead of failing every call with "log masuk".
+    window.setTimeout(function () {
+      var box = document.createElement('div');
+      box.className = 'report-action-selection-card';
+      box.style.margin = '0 0 16px 0';
+      box.textContent = 'Identiti log masuk tidak dapat dibaca (' + e.message +
+        '). Muat semula halaman; jika masih gagal, hubungi pentadbir.';
+      var host = document.getElementById('content-area') || document.body;
+      host.insertBefore(box, host.firstChild);
+    }, 0);
     return { token: '', email: '' };
   }
 })();

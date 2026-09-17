@@ -270,9 +270,14 @@ function doGet(e) {
   }
 
   const template = HtmlService.createTemplateFromFile('Index');
-  // The identity is handed to the page only as a JSON literal so the client can
-  // pass the SAME token to google.script.run. It is the visitor's own token.
-  template.identJson = JSON.stringify({ token: token, email: ident.email });
+  // The identity is handed to the page BASE64-ENCODED, so that no templating
+  // escaping rule can alter it. A JSON literal inserted into an HTML attribute
+  // depends on the engine escaping quotes exactly right; base64 contains only
+  // A-Za-z0-9+/= , none of which any HTML (or JS) escaper touches, so the
+  // attribute comes back byte-identical whatever the engine decides to do.
+  // Getting this wrong would render the portal and then fail EVERY data call.
+  template.identB64 = Utilities.base64Encode(
+    JSON.stringify({ token: token, email: ident.email }));
   return template.evaluate()
     .setTitle('Data SMK Meradong')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
