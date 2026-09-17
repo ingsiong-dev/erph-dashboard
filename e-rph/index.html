@@ -289,7 +289,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: '271f0e2',
+  build: 'c407fa6',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -369,15 +369,30 @@ function __showGate(msg) {
   var st = document.getElementById('g-status');
   if (msg) st.textContent = msg;
 }
+/* The TOKEN is kept in localStorage so it survives a NEW TAB: teachers re-open
+   the link from WhatsApp/Telegram each week, and that is a fresh tab with empty
+   sessionStorage. The nonce/state stay SESSION-scoped on purpose - they belong
+   to one attempt, and sharing them across tabs would break a parallel sign-in. */
+function __lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) {} try { sessionStorage.setItem(k, v); } catch (e) {} }
+function __lsGet(k) {
+  try { var v = localStorage.getItem(k); if (v !== null) return v; } catch (e) {}
+  try { return sessionStorage.getItem(k); } catch (e) {}
+  return null;
+}
+function __lsDel(k) { try { localStorage.removeItem(k); } catch (e) {} try { sessionStorage.removeItem(k); } catch (e) {} }
+function __ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) {} }
+function __ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+function __ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
+
 function __sessionExpired(msg) {
   __erph.token = null;
-  try { sessionStorage.removeItem('erph-token'); } catch (e) { /* private mode */ }
+  __lsDel('erph-token');
   __showGate('Sesi log masuk telah tamat. Log masuk semula untuk meneruskan.');
 }
 
 function __acceptToken(token) {
   __erph.token = token;
-  try { sessionStorage.setItem('erph-token', token); } catch (e) { /* private mode */ }
+  __lsSet('erph-token', token);
   __startApp();
 }
 
@@ -404,9 +419,11 @@ function __decodeJwt(t) {
   } catch (e) { return null; }
 }
 
-function __authUrl() {
+function __authUrl(opt) {
+  opt = opt || {};
   var nonce = __rand(), state = __rand();
-  try { sessionStorage.setItem('erph-nonce', nonce); sessionStorage.setItem('erph-state', state); } catch (e) { /* private */ }
+  __ssSet('erph-nonce', nonce);
+  __ssSet('erph-state', state);
   var p = {
     client_id: __erph.clientId,
     redirect_uri: __erph.redirectUri,
@@ -414,11 +431,36 @@ function __authUrl() {
     scope: 'openid email profile',
     nonce: nonce,
     state: state,
-    prompt: 'select_account',
+    prompt: opt.prompt || 'select_account',
     hd: 'moe-dl.edu.my',
   };
+  if (opt.loginHint) p.login_hint = opt.loginHint;
   return 'https://accounts.google.com/o/oauth2/v2/auth?' +
     Object.keys(p).map(function (k) { return k + '=' + encodeURIComponent(p[k]); }).join('&');
+}
+
+/* A stored token is reusable only while Google's exp has not passed; handing an
+   expired one to the backend would just bounce the teacher back to the gate. */
+function __tokenUsable(t) {
+  var c = __decodeJwt(t);
+  return !!c && (!c.exp || c.exp * 1000 > Date.now() + 30000);
+}
+
+/* SILENT re-login. prompt=none asks Google for a fresh id_token with no screen
+   and no tap, because the teacher already consented - so tapping the link lands
+   straight on the form. login_hint names the account that signed in last, which
+   is what makes it work when several Google accounts share a phone. Guarded by a
+   per-tab flag so a failure can never become a redirect loop. */
+function __trySilent(hint) {
+  if (__ssGet('erph-silent-done') === '1') return false;
+  __ssSet('erph-silent-done', '1');
+  if (!hint) {
+    var old = __lsGet('erph-token');
+    if (old) { var c = __decodeJwt(old); if (c && c.email) hint = c.email; }
+  }
+  __ssSet('erph-silent', '1');
+  location.replace(__authUrl({ prompt: 'none', loginHint: hint }));
+  return true;
 }
 
 function __wireGoogleButton() {
@@ -436,15 +478,18 @@ function __handleOAuthReturn() {
   });
   function clearHash() { try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} }
   var st = document.getElementById('g-status');
+  /* A silent attempt is ALLOWED to fail: the gate is its fallback, so it must
+     not accuse the teacher of cancelling something they never saw. */
+  var wasSilent = __ssGet('erph-silent') === '1';
+  __ssDel('erph-silent');
   if (params.error) {
-    if (st) st.textContent = 'Log masuk dibatalkan. Cuba lagi.';
     clearHash();
+    if (!wasSilent && st) st.textContent = 'Log masuk dibatalkan. Cuba lagi.';
     return true;
   }
   var token = params.id_token;
   if (!token) return false;
-  var wantState = null, wantNonce = null;
-  try { wantState = sessionStorage.getItem('erph-state'); wantNonce = sessionStorage.getItem('erph-nonce'); } catch (e) {}
+  var wantState = __ssGet('erph-state'), wantNonce = __ssGet('erph-nonce');
   var claims = __decodeJwt(token);
   /* A short reason code rides in the message so a phone screenshot is enough to
      tell WHICH check failed: J = token unreadable, S = state, N = nonce. */
@@ -457,21 +502,28 @@ function __handleOAuthReturn() {
     clearHash();
     return true;
   }
-  try { sessionStorage.removeItem('erph-state'); sessionStorage.removeItem('erph-nonce'); } catch (e) {}
+  __ssDel('erph-state'); __ssDel('erph-nonce');
   clearHash();
   __acceptToken(token);
   return true;
 }
 
-/* Restore a previously-saved token so a refresh / reopened tab does not force a
-   new sign-in. If it has expired, the first API call will bounce through
-   __sessionExpired() and the (already-rendered) button is ready to re-sign. */
-(function () {
-  try {
-    var t = sessionStorage.getItem('erph-token');
-    if (t) { __erph.token = t; __startApp(); }
-  } catch (e) { /* private mode: just show the gate */ }
-})();
+/* The single entry point on every load, in priority order: finish a returning
+   sign-in, else reuse a still-valid stored token, else ask Google silently, else
+   leave the gate up for a manual tap. */
+function __boot() {
+  if (__handleOAuthReturn()) return;
+  var t = __lsGet('erph-token');
+  if (t && __tokenUsable(t)) { __erph.token = t; __startApp(); return; }
+  /* Read the dead token's email BEFORE dropping it: that address is the
+     login_hint that makes the silent re-login reliable on a multi-account phone. */
+  var hint = null;
+  if (t) { var c = __decodeJwt(t); if (c && c.email) hint = c.email; __lsDel('erph-token'); }
+  /* ONLY a device that has signed in before gets the silent hop. A first-time
+     visitor has nothing to be silent about, so bouncing them through Google and
+     back would just add a flash before the gate they must use anyway. */
+  if (t) __trySilent(hint);
+}
 
 /* In-app browser hint: the full-page redirect works in Telegram, so this is only
    a fallback note for webviews that still block Google (e.g. some WhatsApp builds). */
@@ -487,12 +539,10 @@ function __handleOAuthReturn() {
   if (b) b.textContent = 'versi ' + __erph.build;
 })();
 
-/* ORDER MATTERS. A login is TWO loads of this page: the first wires the button
-   (storing a fresh nonce/state), the second returns from Google with
-   #id_token=<jwt>&state=<state>. Handling the return FIRST validates the token
-   against the values the PREVIOUS load stored. Wiring the button first would
-   overwrite them with new randoms and reject every real login as a replay. */
-__handleOAuthReturn();
+/* ORDER MATTERS. __boot() runs FIRST so a returning #id_token is validated
+   against the nonce/state a PREVIOUS load stored; re-wiring the button first
+   would overwrite them with new randoms and reject every real login. */
+__boot();
 __wireGoogleButton();
 </script>
 </body>
