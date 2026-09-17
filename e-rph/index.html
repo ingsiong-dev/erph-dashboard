@@ -26,6 +26,7 @@
   #gate .gate-status { font-size:13.5px; color:#cf3b3b; margin:8px 0 0; min-height:18px; }
   #gate .gate-warn { background:#fff5e3; border:2px solid #f0c98a; color:#7a4e05; border-radius:12px;
           padding:12px 14px; font-size:14px; margin:12px 0 0; text-align:left; }
+  #gate .gate-build { font-size:11px; color:#9aa7b4; margin:14px 0 0; letter-spacing:.3px; }
 </style>
 </head>
 <body>
@@ -50,6 +51,7 @@
       Google tidak muncul, ketik <strong>⋯</strong> → buka dalam <strong>Chrome/Safari</strong>,
       kemudian cuba lagi.
     </p>
+    <p class="gate-build" id="g-build"></p>
   </div>
 </div>
 
@@ -287,6 +289,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
+  build: '271f0e2',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -443,9 +446,14 @@ function __handleOAuthReturn() {
   var wantState = null, wantNonce = null;
   try { wantState = sessionStorage.getItem('erph-state'); wantNonce = sessionStorage.getItem('erph-nonce'); } catch (e) {}
   var claims = __decodeJwt(token);
-  var valid = !!claims && (!wantState || params.state === wantState) && (!wantNonce || claims.nonce === wantNonce);
-  if (!valid) {
-    if (st) st.textContent = 'Pengesahan log masuk gagal. Cuba lagi.';
+  /* A short reason code rides in the message so a phone screenshot is enough to
+     tell WHICH check failed: J = token unreadable, S = state, N = nonce. */
+  var why = !claims ? 'J'
+          : (wantState && params.state !== wantState) ? 'S'
+          : (wantNonce && claims.nonce !== wantNonce) ? 'N'
+          : '';
+  if (why) {
+    if (st) st.textContent = 'Pengesahan log masuk gagal (kod ' + why + '). Cuba lagi.';
     clearHash();
     return true;
   }
@@ -472,6 +480,11 @@ function __handleOAuthReturn() {
   if (/(Telegram|WhatsApp|FBAN|FBAV|FB_IAB|Instagram|Line\/|MicroMessenger|Twitter)/i.test(ua)) {
     document.getElementById('g-inapp').style.display = 'block';
   }
+})();
+
+(function () {
+  var b = document.getElementById('g-build');
+  if (b) b.textContent = 'versi ' + __erph.build;
 })();
 
 /* ORDER MATTERS. A login is TWO loads of this page: the first wires the button
