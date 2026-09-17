@@ -178,7 +178,12 @@ var PORTAL = {
      CHARACTER FOR CHARACTER, trailing slash included. A mismatch shows the
      teacher a raw redirect_uri_mismatch page. */
   redirectUri: 'https://ingsiong-dev.github.io/erph-dashboard/',
-  build: 'p1-2026-09-17',
+  /* Printed on the gate as "versi <build>". GitHub Pages serves this HTML with
+     Cache-Control: max-age=600, so a phone can be running a STALE build and the
+     failure text looks identical - this stamp is the only way to tell which build
+     a device actually has. BUMP IT (p<major>.<minor>-<date>) ON EVERY EDIT, or it
+     stops identifying anything. */
+  build: 'p1.1-2026-09-17',
   token: null
 };
 

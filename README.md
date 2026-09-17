@@ -51,6 +51,15 @@ app, so a teacher who has already signed in there is let straight through.
 `ujianLogin` logs three lines (tokeninfo works, the DELIMA tab reads, the roster
 resolves). The expected tokeninfo line is a *rejection*: the test token is a dummy.
 
+### Bump the build stamp whenever you edit `index.html`
+
+The gate prints `versi <build>`, set by `PORTAL.build` in `index.html`. GitHub Pages serves
+this HTML with `Cache-Control: max-age=600`, so a phone can be running a **stale** copy of the
+gate and the failure text looks identical to a fresh one — the stamp is the only way to tell
+which build a device actually has. Change it (`p<major>.<minor>-<date>`) on every edit, or it
+stops identifying anything.
+
+
 
 ## Layout
 
