@@ -1,0 +1,824 @@
+/* ============================================================
+   e-RPH · SMK Meradong   —   reka bentuk mudah & tahan salah
+   ============================================================ */
+
+:root {
+  --blue: #0b4f9e;
+  --blue-dark: #08386f;
+  --blue-soft: #e8f2ff;
+  --green: #1a8f4c;
+  --green-soft: #e6f6ec;
+  --red: #cf3b3b;
+  --red-soft: #fdecec;
+  --amber: #b8730a;
+  --amber-soft: #fff5e3;
+  --ink: #16202b;
+  --muted: #6b7c90;
+  --line: #dde5ee;
+  --bg: #eef2f7;
+  --radius: 16px;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+               "Helvetica Neue", Arial, sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  line-height: 1.55;
+  -webkit-text-size-adjust: 100%;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ---------- Header ---------- */
+
+.hero {
+  background: linear-gradient(135deg, var(--blue-dark), var(--blue) 55%, #1673d1);
+  color: #fff;
+  padding: 14px 18px 30px;
+}
+
+.hero-inner { max-width: 680px; margin: 0 auto; }
+
+.brand { display: flex; align-items: baseline; gap: 10px; margin-bottom: 6px; }
+.brand-mark { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+.brand-sub { font-size: 13px; opacity: 0.85; font-weight: 500; }
+.hero h1 { font-size: 18px; margin: 0 0 5px; font-weight: 650; line-height: 1.35; }
+.hero-year { margin: 0; font-size: 13px; opacity: 0.8; }
+
+/* ---------- Layout ---------- */
+
+.wrap {
+  max-width: 680px;
+  margin: -20px auto 0;
+  padding: 0 14px 20px;
+}
+
+.card {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 14px 15px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(16,32,48,.05), 0 8px 24px rgba(16,32,48,.06);
+}
+
+.hidden { display: none !important; }
+.center { text-align: center; }
+.block { display: block; width: 100%; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+
+h2.big { font-size: 21px; margin: 0 0 8px; font-weight: 750; letter-spacing: -0.3px; }
+h3 { font-size: 16px; margin: 0 0 6px; font-weight: 700; }
+
+.step-tag {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--blue);
+  background: var(--blue-soft);
+  padding: 4px 10px;
+  border-radius: 99px;
+  margin-bottom: 12px;
+}
+
+.big-icon { font-size: 34px; line-height: 1; margin-bottom: 10px; text-align: center; }
+
+/* ---------- Input ---------- */
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 7px;
+}
+
+input, select {
+  width: 100%;
+  padding: 14px 15px;
+  font-size: 16px;            /* elak zoom automatik iOS */
+  font-family: inherit;
+  color: var(--ink);
+  background: #fbfcfe;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+
+input:focus, select:focus {
+  border-color: var(--blue);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgba(11,79,158,.13);
+}
+
+input.bad { border-color: var(--red); background: var(--red-soft); }
+input.good { border-color: var(--green); background: var(--green-soft); }
+
+.field { margin-bottom: 14px; }
+
+.hint { font-size: 12.5px; color: var(--muted); margin: 7px 0 0; }
+.hint.bad { color: var(--red); font-weight: 650; }
+.hint.good { color: var(--green); font-weight: 650; }
+
+/* ---------- Senarai pilih nama ---------- */
+
+.pick-list {
+  margin-top: 12px;
+  max-height: 46vh;
+  overflow-y: auto;
+  border-radius: 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.pick-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 15px 14px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  text-align: left;
+  color: var(--ink);
+  background: #fff;
+  border: none;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+}
+
+.pick-item:first-child { border-top: 1px solid var(--line); }
+.pick-item:active { background: var(--blue-soft); }
+.pick-item .avatar {
+  flex: 0 0 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--blue-soft);
+  color: var(--blue);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ---------- Siapa anda ---------- */
+
+.who {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: #fff;
+  border-radius: 99px;
+  padding: 7px 8px 7px 16px;
+  margin-bottom: 10px;
+  box-shadow: 0 1px 2px rgba(16,32,48,.05), 0 6px 18px rgba(16,32,48,.06);
+}
+
+.who-name { font-weight: 750; font-size: 15px; }
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 8px 6px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--blue);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Tindakan merosakkan (padam). Berubah rupa pada klik pertama sebagai
+   pengesahan dua langkah - tiada dialog modal, kerana dialog menyekat
+   pemaparan dan itu pernah melumpuhkan portal. */
+.link-btn.danger { color: var(--red); }
+
+.link-btn.danger.armed {
+  color: #fff;
+  background: var(--red);
+  text-decoration: none;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+/* ---------- Banner ---------- */
+
+.banner {
+  border-radius: var(--radius);
+  padding: 15px 18px;
+  margin-bottom: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(16,32,48,.05);
+}
+
+.banner small { display: block; font-weight: 400; font-size: 13px; opacity: .9; margin-top: 3px; }
+.banner.aktif { background: var(--blue-soft); color: var(--blue-dark); border-left: 5px solid var(--blue); }
+.banner.cuti  { background: var(--amber-soft); color: var(--amber); border-left: 5px solid var(--amber); }
+.banner.tamat { background: #eceff3; color: var(--muted); border-left: 5px solid var(--muted); }
+
+/* ---------- Sudah hantar ---------- */
+
+.already { border: 2px solid var(--green); background: var(--green-soft); }
+.already h3 { color: var(--green); }
+
+/* ---------- Chips subjek ---------- */
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 9px; }
+
+/* ---------- Pilih fail RPH ---------- */
+/* Kad yang menunjukkan fail yang dipilih (atau fail sedia ada yang akan
+   dikekalkan), dengan butang buang. */
+.chosen {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 9px;
+  padding: 8px 8px 8px 13px;
+  background: var(--green-soft);
+  border: 1px solid #bfe3cd;
+  border-radius: 10px;
+}
+
+.chosen-name {
+  font-size: 13.5px;
+  font-weight: 650;
+  word-break: break-all;
+  min-width: 0;
+}
+
+.chosen .link-btn { padding: 4px 6px; flex: 0 0 auto; }
+
+/* Input fail: disembunyikan secara visual, tetapi KEKAL dalam susunan tab
+   (1px, bukan display:none) supaya ia masih boleh difokus dengan papan kekunci.
+   Kawalan asal pelayar memaparkan teks Inggeris yang tidak boleh diterjemah. */
+.file-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.file-btn {
+  display: block;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--blue);
+  background: #eef4fb;
+  border: 2px dashed #b9cee6;
+  border-radius: 10px;
+  padding: 13px 11px;
+  cursor: pointer;
+  transition: background .15s, border-color .15s;
+}
+
+.file-btn:hover { background: #e3edf9; border-color: var(--blue); }
+
+/* Fokus papan kekunci mesti kelihatan walaupun input sebenar tersembunyi. */
+.file-input:focus-visible + .file-btn {
+  outline: 3px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.chips:empty { display: none; }
+
+.chip {
+  padding: 10px 15px;
+  font-size: 14px;
+  font-weight: 650;
+  font-family: inherit;
+  color: var(--blue-dark);
+  background: var(--blue-soft);
+  border: 2px solid transparent;
+  border-radius: 99px;
+  cursor: pointer;
+}
+
+.chip:active { transform: scale(.97); }
+.chip.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ---------- Ringkasan ---------- */
+
+.summary {
+  margin: 4px 0 0;
+  padding: 11px 13px;
+  background: #f5f8fc;
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.summary .row { display: flex; gap: 10px; }
+.summary .k { flex: 0 0 74px; color: var(--muted); font-size: 13px; }
+.summary .v { font-weight: 700; word-break: break-word; }
+.summary.warn { border-color: #f0c98a; background: var(--amber-soft); }
+
+/* ---------- Butang ---------- */
+
+.btn {
+  width: 100%;
+  padding: 13px;
+  font-size: 16px;
+  font-weight: 750;
+  font-family: inherit;
+  color: #fff;
+  background: var(--blue);
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background .15s, transform .05s;
+}
+
+.btn.big { padding: 15px; font-size: 17px; letter-spacing: .3px; margin-top: 13px; }
+.btn:hover:not(:disabled) { background: var(--blue-dark); }
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn:disabled { background: #c3ccd6; cursor: not-allowed; }
+
+.btn.ghost {
+  background: #fff;
+  color: var(--blue);
+  border: 2px solid var(--blue);
+  margin-top: 14px;
+}
+.btn.ghost:hover:not(:disabled) { background: var(--blue-soft); }
+
+/* ---------- Mesej ---------- */
+
+.msg {
+  margin: 14px 0 0;
+  font-size: 14.5px;
+  font-weight: 650;
+  text-align: center;
+  min-height: 21px;
+}
+
+.msg.good { color: var(--green); }
+.msg.bad  { color: var(--red); }
+.msg.wait { color: var(--muted); }
+
+/* ---------- Kemajuan ---------- */
+
+.progress-card { padding: 14px; }
+
+.progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 7px;
+}
+
+.progress-head strong { font-size: 17px; color: var(--blue); }
+
+.bar { height: 9px; background: #e3eaf2; border-radius: 99px; overflow: hidden; }
+
+.bar-fill {
+  height: 100%;
+  width: 0;
+  background: linear-gradient(90deg, var(--blue), #1673d1);
+  border-radius: 99px;
+  transition: width .45s ease;
+}
+
+.weeks {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(27px, 1fr));
+  gap: 4px;
+  margin-top: 11px;
+}
+
+.week-chip {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 7px;
+  background: #f0f3f7;
+  color: #aab6c4;
+  font-variant-numeric: tabular-nums;
+}
+
+.week-chip.done { background: var(--green); color: #fff; }
+.week-chip.miss { background: var(--red-soft); color: var(--red); }
+.week-chip.cuti { background: #f0f0f0; color: #c2c8d0; }
+.week-chip.now  { outline: 3px solid var(--blue); outline-offset: 1px; }
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 11px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend span { display: flex; align-items: center; gap: 6px; }
+.dot { width: 11px; height: 11px; border-radius: 3px; display: inline-block; }
+.dot.done { background: var(--green); }
+.dot.miss { background: var(--red-soft); border: 1px solid #f0c4c4; }
+.dot.cuti { background: #f0f0f0; border: 1px solid #dcdcdc; }
+
+/* ---------- Siap ---------- */
+
+.tick {
+  width: 74px;
+  height: 74px;
+  margin: 6px auto 16px;
+  border-radius: 50%;
+  background: var(--green);
+  color: #fff;
+  font-size: 40px;
+  line-height: 74px;
+  font-weight: 700;
+  animation: pop .35s ease-out;
+}
+
+@keyframes pop {
+  0%   { transform: scale(.4); opacity: 0; }
+  70%  { transform: scale(1.08); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* ---------- Spinner ---------- */
+
+.spinner {
+  width: 32px; height: 32px;
+  margin: 8px auto 14px;
+  border: 3px solid #dbe4ee;
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin .8s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2s; }
+  .tick { animation: none; }
+  .bar-fill { transition: none; }
+}
+
+/* ---------- Footer ---------- */
+
+.foot {
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 6px 16px 30px;
+}
+
+@media (max-width: 380px) {
+  .card { padding: 18px 15px; }
+  h2.big { font-size: 19px; }
+}
+
+/* ---------- Penukar halaman (Penghantaran / Laporan) ---------- */
+
+.pagetabs {
+  display: flex;
+  gap: 4px;
+  background: #dde6f1;
+  border-radius: 99px;
+  padding: 4px;
+  margin-bottom: 10px;
+}
+
+.pagetabs button {
+  flex: 1;
+  padding: 9px 10px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: background .15s, color .15s;
+}
+
+.pagetabs button.on {
+  background: #fff;
+  color: var(--blue);
+  box-shadow: 0 1px 3px rgba(16,32,48,.12);
+}
+
+/* ---------- Laporan e-RPH ---------- */
+
+.lap-controls { display: grid; grid-template-columns: 1fr 130px; gap: 10px; }
+
+@media (max-width: 430px) {
+  .lap-controls { grid-template-columns: 1fr; }
+}
+
+.lap-scores {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+@media (max-width: 430px) {
+  .lap-scores { grid-template-columns: 1fr; }
+}
+
+.score {
+  border-radius: var(--radius);
+  padding: 11px 13px;
+  box-shadow: 0 1px 2px rgba(16,32,48,.05), 0 8px 24px rgba(16,32,48,.06);
+}
+
+.score .lbl {
+  font-size: 12px;
+  font-weight: 650;
+  margin: 0 0 2px;
+  line-height: 1.3;
+}
+
+.score .val {
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.score.green { background: var(--green-soft); color: #0f6b39; }
+.score.red   { background: var(--red-soft);   color: #a52a2a; }
+
+.lap-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+.lap-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+.lap-table th, .lap-table td {
+  padding: 7px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--line);
+  vertical-align: top;
+}
+
+.lap-table th {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: .4px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.lap-table td.num {
+  font-variant-numeric: tabular-nums;
+  font-weight: 750;
+  width: 58px;
+}
+
+.lap-table tbody tr:last-child td { border-bottom: none; }
+
+.lap-table tr.cuti td { background: #f7f8fa; color: var(--muted); }
+.lap-table tr.cuti td.num { color: var(--muted); }
+
+.lap-table a { color: var(--blue); word-break: break-all; }
+
+.pill {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 99px;
+  font-size: 11.5px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.pill.disemak { background: var(--green-soft); color: #0f6b39; }
+.pill.belum   { background: var(--amber-soft); color: var(--amber); }
+.pill.kosong  { background: #eceff3; color: var(--muted); }
+
+.lap-note { font-size: 12.5px; color: var(--muted); margin: 9px 0 0; }
+.lap-empty { text-align: center; color: var(--muted); padding: 18px 0; }
+
+/* Nama guru sebagai teks, bukan kotak pilihan - halaman ini hanya memaparkan
+   laporan diri sendiri. Dipadankan dengan tinggi <select> di sebelahnya supaya
+   baris kawalan tidak berubah bentuk. */
+.lap-guru-nama {
+  margin: 0;
+  padding: 8px 13px;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  background: #f7f9fb;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink, #1d2b3a);
+}
+
+/* ---------- Padam rekod pada Laporan e-RPH ----------
+   Tong sampah pada setiap baris MILIK SENDIRI sahaja. Pengesahan dua langkah
+   (klik pertama menyalakan butang, klik kedua memadam) - tiada confirm(),
+   kerana dialog modal pernah melumpuhkan portal ini. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+.lap-padam-head, .lap-table td.lap-padam { width: 1%; text-align: right; white-space: nowrap; }
+
+.lap-del {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 4px 7px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--muted);
+}
+.lap-del:hover { background: var(--red-soft); color: var(--red); }
+/* Apabila "armed" butang bertukar kepada TEKS, bukan sekadar warna. */
+.lap-del.armed {
+  background: var(--red);
+  color: #fff;
+  border-color: var(--red);
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 9px;
+  white-space: nowrap;
+}
+.lap-del:disabled { opacity: .45; cursor: default; }
+
+/* Guru lain: tiada butang, hanya nota kecil supaya lajur tidak kelihatan rosak. */
+.lap-del-none { color: #c3cbd6; font-size: 13px; }
+
+/* ============================================================
+   Skrin "pilih akaun Google" (akses ditolak)
+   ------------------------------------------------------------
+   Ditambah 17 Sep 2026. Skrin itu dibaca di TELEFON, dalam keadaan guru
+   sudah kecewa, jadi arahan disusun sebagai senarai bernombor yang boleh
+   diikuti tanpa membaca perenggan panjang.
+   ============================================================ */
+
+.steps {
+  margin: 16px 0 0;
+  padding-left: 22px;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+.steps li { margin-bottom: 7px; }
+.steps li:last-child { margin-bottom: 0; }
+
+/* Butang yang berupa <a> (butang ini pergi ke accounts.google.com, jadi ia
+   memang pautan). Garis bawah lalai pelayar menjadikannya kelihatan berbeza
+   daripada setiap butang lain dalam app ini. */
+a.btn { text-decoration: none; }
+
+/* ============================================================
+   ✦ Lapisan cahaya (glow) + latar yang lebih tenang
+   ------------------------------------------------------------
+   Ditambah 16 Sep 2026: "mouse ke butang, butang bersinar;
+   keseluruhannya nampak tenang."
+
+   SELURUH blok ini bersifat TAMBAHAN. Ia tidak mengubah mana-mana
+   peraturan di atas, cuma menambah kesan. Untuk membuangnya, padam
+   dari baris ini hingga hujung fail - tiada apa-apa lagi yang hilang.
+
+   PENTING - guru membuka halaman ini melalui TELEFON, dan skrin sentuh
+   TIADA :hover langsung. Sebab itu setiap kesan di bawah dipasang pada
+   :hover (tetikus), :active (ketikan jari) DAN :focus-visible (papan
+   kekunci). Kalau hanya :hover, majoriti guru tidak akan nampak apa-apa.
+   ============================================================ */
+
+/* Latar: kecerunan sangat lembut (langit -> air) supaya skrin panjang tidak
+   terasa rata dan kosong. Bezanya sengaja hampir tak nampak. */
+body {
+  background: linear-gradient(180deg, #e9f1fa 0%, #eef2f7 40%, #edf4f0 100%);
+}
+
+/* --- Butang utama ------------------------------------------------------- */
+
+.btn {
+  transition: background .18s ease, transform .06s ease, box-shadow .24s ease;
+}
+
+/* Dua lapisan: cincin (0 0 0 Npx) jadi "halo" di sekeliling butang, dan satu
+   bayang lembut di bawah untuk kedalaman. */
+.btn:hover:not(:disabled),
+.btn:active:not(:disabled) {
+  box-shadow: 0 0 0 5px rgba(11, 79, 158, .15),
+              0 9px 22px rgba(11, 79, 158, .26);
+}
+
+.btn:active:not(:disabled) {
+  box-shadow: 0 0 0 7px rgba(11, 79, 158, .20),
+              0 4px 12px rgba(11, 79, 158, .24);
+}
+
+/* Papan kekunci dapat cincin PEPEJAL, bukan cahaya samar sahaja - penunjuk
+   fokus mesti kekal jelas. Cahaya ditambah di atasnya, bukan menggantikannya. */
+.btn:focus-visible:not(:disabled) {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
+  box-shadow: 0 9px 22px rgba(11, 79, 158, .26);
+}
+
+.btn.ghost:hover:not(:disabled),
+.btn.ghost:active:not(:disabled),
+.btn.ghost:focus-visible:not(:disabled) {
+  box-shadow: 0 0 0 5px rgba(11, 79, 158, .13),
+              0 8px 20px rgba(11, 79, 158, .18);
+}
+
+/* --- Chip mata pelajaran ------------------------------------------------ */
+
+.chip {
+  transition: background .18s ease, color .18s ease, border-color .18s ease,
+              box-shadow .24s ease, transform .06s ease;
+}
+
+.chip:hover, .chip:focus-visible {
+  box-shadow: 0 0 0 4px rgba(11, 79, 158, .14),
+              0 6px 16px rgba(11, 79, 158, .16);
+}
+
+.chip.on:hover, .chip.on:focus-visible {
+  box-shadow: 0 0 0 4px rgba(11, 79, 158, .22),
+              0 6px 18px rgba(11, 79, 158, .30);
+}
+
+/* --- "Pilih fail RPH…" -------------------------------------------------- */
+
+.file-btn {
+  transition: background .18s ease, border-color .18s ease, box-shadow .24s ease;
+}
+
+.file-btn:hover, .file-btn:active {
+  box-shadow: 0 0 0 5px rgba(11, 79, 158, .12),
+              0 8px 20px rgba(11, 79, 158, .16);
+}
+
+.file-input:focus-visible + .file-btn {
+  box-shadow: 0 0 0 5px rgba(11, 79, 158, .16),
+              0 8px 20px rgba(11, 79, 158, .18);
+}
+
+/* --- Penukar halaman (Penghantaran / Laporan) --------------------------- */
+
+.pagetabs button {
+  transition: background .18s ease, color .18s ease, box-shadow .24s ease;
+}
+
+.pagetabs button:not(.on):hover,
+.pagetabs button:not(.on):focus-visible {
+  background: rgba(255, 255, 255, .55);
+  color: var(--blue);
+}
+
+/* --- Pautan-butang kecil (Bukan anda?, Pilih minggu lain…, KEMBALI) ----- */
+
+.link-btn {
+  transition: background .18s ease, color .18s ease, box-shadow .24s ease;
+  border-radius: 8px;
+}
+
+.link-btn:hover:not(.danger),
+.link-btn:focus-visible:not(.danger) {
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 3px rgba(11, 79, 158, .10);
+}
+
+/* --- Tong sampah pada Laporan: cahaya MERAH, bukan biru ----------------- */
+/* :not(.armed) penting - butang yang sudah "armed" membawa teks "Padam?",
+   dan cahaya di sekelilingnya hanya mengaburkan mesej itu. */
+
+.lap-del {
+  transition: background .18s ease, color .18s ease, box-shadow .24s ease;
+}
+
+.lap-del:hover:not(.armed),
+.lap-del:focus-visible:not(.armed) {
+  box-shadow: 0 0 0 4px rgba(207, 59, 59, .16),
+              0 4px 12px rgba(207, 59, 59, .18);
+}
+
+/* --- Hormati tetapan sistem --------------------------------------------- */
+/* Kesan KEKAL kelihatan; hanya peralihannya dimatikan. */
+
+@media (prefers-reduced-motion: reduce) {
+  .btn, .chip, .file-btn, .pagetabs button, .lap-del, .link-btn {
+    transition: background .18s ease, color .18s ease, border-color .18s ease;
+  }
+}

@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0b4f9e">
+<title>e-RPH · SMK Meradong</title>
+<link rel="stylesheet" href="styles.css">
+
+<style>
+  #gate { display:flex; position:fixed; inset:0; align-items:center; justify-content:center;
+          padding:18px; background:linear-gradient(180deg,#e9f1fa 0%,#eef2f7 40%,#edf4f0 100%);
+          z-index:999; }
+  #gate .gate-card { width:100%; max-width:400px; background:#fff; border-radius:18px;
+          padding:26px 22px; text-align:center; box-shadow:0 12px 40px rgba(16,32,48,.14); }
+  #gate .gate-brand { font-size:20px; font-weight:800; color:#0b4f9e; }
+  #gate .gate-brand span { font-weight:500; font-size:14px; color:#6b7c90; }
+  #gate h1 { font-size:20px; margin:16px 0 6px; color:#16202b; }
+  #gate .gate-sub { font-size:14px; color:#6b7c90; margin:0 0 18px; }
+  #gate #g-btn { display:flex; justify-content:center; min-height:44px; margin:4px 0 10px; }
+  #gate .gate-status { font-size:13.5px; color:#cf3b3b; margin:8px 0 0; min-height:18px; }
+  #gate .gate-warn { background:#fff5e3; border:2px solid #f0c98a; color:#7a4e05; border-radius:12px;
+          padding:12px 14px; font-size:14px; margin:12px 0 0; text-align:left; }
+</style>
+</head>
+<body>
+
+<div id="gate" class="gate">
+  <div class="gate-card">
+    <div class="gate-brand">e-RPH <span>· SMK Meradong</span></div>
+    <h1>Log masuk dengan akaun Google</h1>
+    <p class="gate-sub">Pilih akaun yang berakhir dengan <strong>@moe-dl.edu.my</strong>.</p>
+    <div id="g-btn"></div>
+    <p id="g-status" class="gate-status"></p>
+    <p id="g-inapp" class="gate-warn" style="display:none">
+      ⚠ Anda buka dalam pelayar dalam-app (Telegram/WhatsApp). Google menyekat log masuk
+      di sini. Ketik <strong>⋯</strong> → <strong>"Open in Safari" / "Buka dalam pelayar"</strong>,
+      kemudian cuba lagi.
+    </p>
+  </div>
+</div>
+
+
+<header class="hero">
+  <div class="hero-inner">
+    <div class="brand">
+      <span class="brand-mark">e-RPH</span>
+      <span class="brand-sub">SMK Meradong</span>
+    </div>
+    <h1 id="hero-title">Penghantaran Rancangan Pengajaran Harian</h1>
+    <p class="hero-year">Sesi <span id="tahun-label">2026</span></p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ============ PENUKAR HALAMAN (slide) ============ -->
+  <nav class="pagetabs" id="pagetabs" aria-label="Pilih halaman">
+    <button type="button" id="tab-hantar" class="on">Penghantaran e-RPH</button>
+    <button type="button" id="tab-laporan">Laporan e-RPH</button>
+  </nav>
+
+  <div id="page-hantar">
+
+  <!-- ============ 0. MEMUATKAN ============ -->
+  <section id="scr-load" class="card center">
+    <div class="spinner" aria-hidden="true"></div>
+    <p class="muted">Memuatkan…</p>
+  </section>
+
+  <!-- ============ 0b. RALAT ============ -->
+  <section id="scr-error" class="card hidden">
+    <div class="big-icon">⚠️</div>
+    <h2 class="center">Ada masalah sambungan</h2>
+    <p id="error-msg" class="center muted"></p>
+    <button class="btn ghost" id="btn-retry" type="button">Cuba lagi</button>
+  </section>
+
+  <!-- ============ 1. PILIH NAMA ============ -->
+  <section id="scr-pick" class="hidden">
+    <div class="card">
+      <div class="step-tag">Langkah 1</div>
+      <h2 class="big">Siapa anda?</h2>
+      <p class="muted small">Taip sebahagian nama, kemudian <strong>ketik nama anda</strong> daripada senarai.</p>
+
+      <input id="search" type="search" placeholder="cth. KOH"
+             autocomplete="off" autocapitalize="characters" spellcheck="false">
+
+      <div id="pick-list" class="pick-list"></div>
+      <p id="pick-empty" class="muted small hidden">Nama tidak dijumpai. Cuba ejaan lain, atau hubungi pentadbir.</p>
+    </div>
+  </section>
+
+  <!-- ============ 2. HANTAR ============ -->
+  <section id="scr-send" class="hidden">
+
+    <div class="who">
+      <span class="who-name" id="who-name">—</span>
+      <button class="link-btn" id="btn-change" type="button">Bukan anda?</button>
+    </div>
+
+    <div id="banner" class="banner"></div>
+
+    <div id="already" class="card already hidden">
+      <div class="big-icon">✅</div>
+      <h3 class="center">Anda sudah hantar untuk <span id="already-week"></span></h3>
+      <p class="center muted small" id="already-subject"></p>
+      <!-- Tiada butang di sini (permintaan 16 Sep 2026): kad ini hanya
+           MEMAKLUMKAN. Membetulkan rekod dibuat dengan memadamnya pada halaman
+           Laporan e-RPH, kemudian menghantar semula. Baris di bawah wujud
+           supaya guru tidak tersekat tanpa tahu ke mana hendak pergi. -->
+      <p class="muted center small">
+        Untuk membetulkan rekod ini, padamkannya pada halaman
+        <strong>Laporan e-RPH</strong>, kemudian hantar semula.
+      </p>
+    </div>
+
+    <form id="form" class="card hidden" novalidate>
+
+      <div class="field">
+        <label for="subject">Mata Pelajaran</label>
+        <div id="subject-chips" class="chips"></div>
+        <input id="subject" list="senarai-subjek" placeholder="Taip mata pelajaran"
+               autocomplete="off" autocapitalize="words" required>
+        <datalist id="senarai-subjek"></datalist>
+      </div>
+
+      <div class="field">
+        <label for="rph-file">Fail RPH</label>
+        <!-- Input fail sebenar disembunyikan secara visual; <label for> yang
+             kelihatan seperti butang yang membukanya. Sebab: kawalan asal
+             pelayar memaparkan teks Bahasa INGGERIS ("Choose File" /
+             "No file chosen") yang tidak boleh diterjemah melalui CSS, jadi
+             ia bercanggah dengan seluruh halaman. -->
+        <input id="rph-file" type="file" class="file-input"
+               accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.heic">
+        <label for="rph-file" class="file-btn" id="rph-file-btn">Pilih fail RPH…</label>
+        <p class="hint" id="file-hint">Pilih fail RPH daripada komputer atau telefon anda.</p>
+        <div class="chosen hidden" id="file-chosen">
+          <span class="chosen-name" id="file-name">—</span>
+          <button class="link-btn danger" id="file-clear" type="button">Buang</button>
+        </div>
+      </div>
+
+      <!-- Pautan tidak lagi ditaip oleh guru.
+           Fail di atas dimuat naik ke Drive SEKOLAH dan pautannya dijana
+           automatik - sama seperti borang Google yang digantikan. Medan ini
+           kekal HIDDEN kerana ia membawa pautan rekod sedia ada semasa
+           mengemas kini, supaya menyimpan semula tanpa fail baharu tidak
+           memadamkan pautan asal. -->
+      <input id="url" type="hidden">
+
+      <div class="other-week">
+        <button class="link-btn" id="btn-other" type="button">Pilih minggu lain…</button>
+        <div id="other-wrap" class="hidden">
+          <label for="other-week">Pilih minggu — termasuk minggu yang sudah dihantar,
+            untuk dikemas kini atau dipadam</label>
+          <select id="other-week"></select>
+        </div>
+      </div>
+
+      <!-- Ringkasan sebelum hantar -->
+      <div class="summary" id="summary"></div>
+
+      <button class="btn big" id="btn-submit" type="submit">HANTAR RPH</button>
+      <p class="msg" id="msg" role="status"></p>
+    </form>
+
+    <div class="card progress-card">
+      <div class="progress-head">
+        <span class="muted small">Kemajuan anda</span>
+        <strong id="prog-text">—</strong>
+      </div>
+      <div class="weeks" id="weeks"></div>
+      <div class="legend">
+        <span><i class="dot done"></i>Selesai</span>
+        <span><i class="dot miss"></i>Belum</span>
+        <span><i class="dot cuti"></i>Cuti</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 3. SIAP ============ -->
+  <section id="scr-done" class="hidden">
+    <div class="card center">
+      <div class="tick">✓</div>
+      <h2 class="big">Berjaya dihantar!</h2>
+      <p class="muted" id="done-detail"></p>
+      <a class="btn ghost block" id="done-link" target="_blank" rel="noopener">Buka RPH saya</a>
+      <button class="btn big" id="btn-again" type="button">Selesai</button>
+    </div>
+  </section>
+
+  </div><!-- /#page-hantar -->
+
+  <!-- ============ HALAMAN 2: LAPORAN e-RPH ============ -->
+  <div id="page-laporan" class="hidden">
+
+    <section id="lap-load" class="card center">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="muted">Memuatkan laporan…</p>
+    </section>
+
+    <section id="lap-error" class="card hidden">
+      <div class="big-icon">⚠️</div>
+      <h2 class="center">Laporan tidak dapat dimuatkan</h2>
+      <p id="lap-error-msg" class="center muted"></p>
+      <button class="btn ghost" id="lap-retry" type="button">Cuba lagi</button>
+    </section>
+
+    <section id="lap-body" class="hidden">
+
+      <div class="card">
+        <div class="lap-controls">
+          <div>
+            <label>CIKGU</label>
+            <!-- Nama sahaja - tiada senarai pilihan. Setiap guru hanya melihat
+                 laporannya sendiri, jadi tiada apa-apa untuk dipilih. -->
+            <p class="lap-guru-nama" id="lap-guru-nama">—</p>
+          </div>
+          <div>
+            <label for="lap-tahun">Tahun</label>
+            <select id="lap-tahun"></select>
+          </div>
+        </div>
+      </div>
+
+      <div class="lap-scores">
+        <div class="score green">
+          <p class="lbl">Bilangan minggu telah dihantar</p>
+          <div class="val" id="lap-dihantar">—</div>
+        </div>
+        <div class="score red">
+          <p class="lbl">Jumlah Minggu Persekolahan Tahun <span id="lap-tahun-lbl">2026</span></p>
+          <div class="val" id="lap-jumlah">—</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="lap-table-wrap">
+          <table class="lap-table">
+            <thead>
+              <tr>
+                <th>Minggu</th>
+                <th>Mata Pelajaran</th>
+                <th>Muat naik RPH</th>
+                <th>Semakan</th>
+                <th class="lap-padam-head"><span class="sr-only">Padam</span></th>
+              </tr>
+            </thead>
+            <tbody id="lap-rows"></tbody>
+          </table>
+        </div>
+        <p class="lap-note" id="lap-note"></p>
+        <p class="hint center hidden" id="lap-del-hint"></p>
+      </div>
+
+    </section>
+  </div><!-- /#page-laporan -->
+
+</main>
+
+<footer class="foot">e-RPH · SMK Meradong · Sesi 2026</footer>
+
+
+
+
+
+<script>
+/* ---- Sign-in gate + google.script.run shim (fetch + ID token) ---------------- */
+var __erph = {
+  token: null,
+  loaded: false,
+  clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
+  backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
+};
+
+/* google.script.run re-implemented with fetch. The real app.js/laporan.js never
+   know the difference: every apiX(...) is POSTed with the token, and the server
+   verifies it. */
+var __API = {
+  apiBootstrap:   { action: 'bootstrap',   fields: [] },
+  apiMe:          { action: 'me',          fields: ['week'] },
+  apiSubmit:      { action: 'submit',      fields: ['body'], spread: true },
+  apiDelete:      { action: 'delete',      fields: ['week', 'tahun'] },
+  apiLaporanGuru: { action: 'laporanGuru', fields: ['email', 'tahun'] },
+};
+
+function __call(name, args) {
+  var cfg = __API[name];
+  var payload = { action: cfg.action, token: __erph.token };
+  if (cfg.spread) {
+    var src = args[0] || {};
+    Object.keys(src).forEach(function (k) { payload[k] = src[k]; });
+  } else {
+    cfg.fields.forEach(function (f, i) { if (args[i] !== undefined) payload[f] = args[i]; });
+  }
+  return fetch(__erph.backend, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload),
+  }).then(function (r) { return r.json(); });
+}
+
+function Runner(onOk, onErr) { this._ok = onOk; this._err = onErr; }
+Runner.prototype.withSuccessHandler = function (f) { return new Runner(f, this._err); };
+Runner.prototype.withFailureHandler = function (f) { return new Runner(this._ok, f); };
+Object.keys(__API).forEach(function (name) {
+  Runner.prototype[name] = function () {
+    var args = Array.prototype.slice.call(arguments);
+    var self = this;
+    __call(name, args).then(
+      function (res) {
+        if (res && res.ok === true) {
+          if (self._ok) self._ok(res);
+        } else {
+          var msg = (res && res.error) || 'Ralat server';
+          if (/token|log masuk|tamat tempoh/i.test(msg)) { __sessionExpired(msg); }
+          if (self._err) self._err(new Error(msg));
+        }
+      },
+      function (e) {
+        if (self._err) self._err(e);
+      }
+    );
+  };
+});
+window.google = { script: { run: { withSuccessHandler: function (f) { return new Runner(f, null); } } } };
+
+/* Load the real app scripts only after a token exists (they call boot() on load). */
+function __loadApp() {
+  if (__erph.loaded) return;
+  __erph.loaded = true;
+  var s1 = document.createElement('script'); s1.src = 'app.js';
+  var s2 = document.createElement('script'); s2.src = 'laporan.js';
+  s1.onload = function () { document.body.appendChild(s2); };
+  document.body.appendChild(s1);
+}
+
+function __showGate(msg) {
+  document.getElementById('gate').style.display = 'flex';
+  var st = document.getElementById('g-status');
+  if (msg) st.textContent = msg;
+}
+function __sessionExpired(msg) {
+  __erph.token = null;
+  __showGate('Sesi log masuk telah tamat. Log masuk semula untuk meneruskan.');
+}
+
+function __onSignIn(resp) {
+  var st = document.getElementById('g-status');
+  if (resp && resp.error) { st.textContent = 'Log masuk tidak selesai: ' + resp.error; return; }
+  if (!resp || !resp.credential) { st.textContent = 'Tiada maklum balas dari Google. Cuba lagi.'; return; }
+  __erph.token = resp.credential;
+  document.getElementById('gate').style.display = 'none';
+  __loadApp();
+}
+
+/* In-app browser warning (Google blocks OAuth in embedded webviews). */
+(function () {
+  var ua = navigator.userAgent || '';
+  if (/(Telegram|WhatsApp|FBAN|FBAV|FB_IAB|Instagram|Line/|MicroMessenger|Twitter)/i.test(ua)) {
+    document.getElementById('g-inapp').style.display = 'block';
+  }
+})();
+
+/* Load the Google library, then render the button. Every failure is visible. */
+(function () {
+  var s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  s.onload = function () { window.__gsiLoaded = true; };
+  s.onerror = function () { window.__gsiFailed = true; };
+  document.head.appendChild(s);
+})();
+
+var __tries = 0;
+function __initGis() {
+  if (typeof google === 'undefined' || !google.accounts || !google.accounts.id) {
+    if (window.__gsiFailed) {
+      document.getElementById('g-status').textContent = 'Pustaka Google gagal dimuatkan. Semak sambungan.';
+      return;
+    }
+    if (++__tries > 40) { document.getElementById('g-status').textContent = 'Pustaka Google tidak dimuatkan.'; return; }
+    return setTimeout(__initGis, 250);
+  }
+  try {
+    google.accounts.id.initialize({
+      client_id: __erph.clientId,
+      callback: __onSignIn,
+      auto_select: false,
+      cancel_on_tap_outside: false,
+    });
+    google.accounts.id.renderButton(document.getElementById('g-btn'),
+      { type: 'standard', theme: 'filled_blue', size: 'large', text: 'signin_with', shape: 'rectangular', width: 300 });
+  } catch (e) {
+    document.getElementById('g-status').textContent = 'Ralat memulakan butang Google: ' + (e && e.message);
+  }
+}
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', __initGis);
+else __initGis();
+</script>
+</body>
+</html>
