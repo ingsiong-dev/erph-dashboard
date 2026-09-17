@@ -84,7 +84,11 @@
   </main>
 
 <script>
-  var clientId = new URLSearchParams(location.search).get('client') || '';
+  /* Baked in so a bare URL works: a mistyped ?client= looks identical to a
+     blocked origin (no button), which wasted a test round on 17 Sep 2026.
+     Overridable with ?client= for a different project. */
+  var DEFAULT_CLIENT_ID = '314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com';
+  var clientId = new URLSearchParams(location.search).get('client') || DEFAULT_CLIENT_ID;
   var statusEl = document.getElementById('status');
   var diagEl   = document.getElementById('diag');
 
