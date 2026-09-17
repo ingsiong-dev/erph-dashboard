@@ -474,9 +474,13 @@ function __handleOAuthReturn() {
   }
 })();
 
-/* Wire the "Log masuk" button to the OAuth URL and process any returning token. */
-__wireGoogleButton();
+/* ORDER MATTERS. A login is TWO loads of this page: the first wires the button
+   (storing a fresh nonce/state), the second returns from Google with
+   #id_token=<jwt>&state=<state>. Handling the return FIRST validates the token
+   against the values the PREVIOUS load stored. Wiring the button first would
+   overwrite them with new randoms and reject every real login as a replay. */
 __handleOAuthReturn();
+__wireGoogleButton();
 </script>
 </body>
 </html>
