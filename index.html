@@ -42,6 +42,10 @@
     padding:9px 16px; font-size:15px; font-weight:500; text-decoration:none;
     min-height:44px; margin:4px 0 10px; box-sizing:border-box; }
   .g-btn:hover, .g-btn:active { background:#f8f9fa; box-shadow:0 1px 3px rgba(60,64,67,.3); }
+  /* The login card is now just brand + title + button, so the button takes over the
+     vertical spacing the .sub line used to provide (its 18px bottom margin plus the
+     button's own 4px top) - without it the card looks cramped. */
+  #card-login .g-btn { margin-top:22px; }
   .g-btn:focus-visible { outline:3px solid #bcd6f5; outline-offset:2px; }
   .g-btn .g-logo { width:20px; height:20px; flex:0 0 auto; }
   .btn-wide { width:100%; }
@@ -76,7 +80,6 @@
          src="https://ingsiong-dev.github.io/erph-dashboard/e-rph/logo.png">
     <div class="brand">DATA SMK MERADONG<small>Portal Guru Data</small></div>
     <h1>Log masuk dengan akaun Delima</h1>
-    <p class="sub">Pilih akaun <strong>Delima</strong> anda.</p>
 
     <!-- A REAL LINK, never a popup or window.open: in-app browsers block those,
          and the whole point of this page is that it works on a phone. -->
@@ -175,7 +178,7 @@ var PORTAL = {
      failure text looks identical - this stamp is the only way to tell which build
      a device actually has. BUMP IT (p<major>.<minor>-<date>) ON EVERY EDIT, or it
      stops identifying anything. */
-  build: 'p1.2-2026-09-17',
+  build: 'p1.3-2026-09-17',
   token: null
 };
 
