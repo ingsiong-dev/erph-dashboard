@@ -236,9 +236,11 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 .already { border: 2px solid var(--green); background: var(--green-soft); }
 .already h3 { color: var(--green); }
 
-/* ---------- Chips subjek ---------- */
-
-.chips { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 9px; }
+/* ---------- Chips subjek (v4-v21, DIBUANG dalam v22) ---------- */
+/* v22 menggantikan chip dengan <select id="subject">. Peraturan .chip dan
+   .chips dibuang, bukan disorok: kod mati yang masih boleh dicapai ialah bug
+   yang menunggu untuk berlaku. .week-chip (peta kemajuan) KEKAL - ia kelas
+   yang berbeza dan masih digunakan. */
 
 /* ---------- Pilih fail RPH ---------- */
 /* Kad yang menunjukkan fail yang dipilih (atau fail sedia ada yang akan
@@ -301,22 +303,12 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   outline-offset: 2px;
 }
 
-.chips:empty { display: none; }
-
-.chip {
-  padding: 10px 15px;
-  font-size: 14px;
-  font-weight: 650;
-  font-family: inherit;
-  color: var(--blue-dark);
-  background: var(--blue-soft);
-  border: 2px solid transparent;
-  border-radius: 99px;
-  cursor: pointer;
-}
-
-.chip:active { transform: scale(.97); }
-.chip.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+/* ---------- Medan mata pelajaran (v22) ---------- */
+/* Chip subjek dibuang - medan ini kini SATU <select> yang menyenaraikan subjek
+   guru itu sahaja. Kotak taip yang muncul di bawahnya hanya untuk pilihan
+   "Lain-lain…", jadi ia diberi jarak supaya jelas ia sebahagian daripada medan
+   yang sama, bukan medan kedua. */
+#subject-lain { margin-top: 9px; }
 
 /* ---------- Ringkasan ---------- */
 
@@ -748,22 +740,9 @@ body {
               0 8px 20px rgba(11, 79, 158, .18);
 }
 
-/* --- Chip mata pelajaran ------------------------------------------------ */
-
-.chip {
-  transition: background .18s ease, color .18s ease, border-color .18s ease,
-              box-shadow .24s ease, transform .06s ease;
-}
-
-.chip:hover, .chip:focus-visible {
-  box-shadow: 0 0 0 4px rgba(11, 79, 158, .14),
-              0 6px 16px rgba(11, 79, 158, .16);
-}
-
-.chip.on:hover, .chip.on:focus-visible {
-  box-shadow: 0 0 0 4px rgba(11, 79, 158, .22),
-              0 6px 18px rgba(11, 79, 158, .30);
-}
+/* --- Chip mata pelajaran (v4-v21, DIBUANG dalam v22) -------------------- */
+/* Keseluruhan blok .chip dibuang bersama chip itu sendiri. .week-chip pada
+   peta kemajuan ialah kelas BERBEZA dan tidak disentuh. */
 
 /* --- "Pilih fail RPH…" -------------------------------------------------- */
 
@@ -824,7 +803,7 @@ body {
 /* Kesan KEKAL kelihatan; hanya peralihannya dimatikan. */
 
 @media (prefers-reduced-motion: reduce) {
-  .btn, .chip, .file-btn, .pagetabs button, .lap-del, .link-btn {
+  .btn, .file-btn, .pagetabs button, .lap-del, .link-btn {
     transition: background .18s ease, color .18s ease, border-color .18s ease;
   }
 }

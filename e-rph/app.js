@@ -32,6 +32,11 @@ var CONFIG = {
   HOLIDAY_WEEKS: [6, 11, 20, 21, 34]
 };
 
+/* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
+   supaya ia TIDAK PERNAH boleh bertembung dengan nama subjek sebenar, dan
+   supaya satu carian sumber dapat membuktikan ia satu-satunya nilai khas. */
+var SUBJEK_LAIN = '__LAIN__';
+
 /* ============================================================
    2. UTILITI TARIKH
    ============================================================ */
@@ -172,7 +177,7 @@ var el = {
   alreadySubject: $('already-subject'),
   form: $('form'),
   subject: $('subject'),
-  subjectChips: $('subject-chips'),
+  subjectLain: $('subject-lain'),
   subjectList: $('senarai-subjek'),
   file: $('rph-file'),
   fileBtn: $('rph-file-btn'),
@@ -305,6 +310,12 @@ function boot() {
       state.subjects = data.subjects || [];
       fillDatalist(el.subjectList, state.subjects);
 
+      /* v22: senarai mata pelajaran dibina SEKARANG, bukan hanya selepas
+         apiMe menjawab. Tanpa ini borang sempat kelihatan dengan senarai
+         menurun yang KOSONG - dan senarai kosong pada satu-satunya medan
+         wajib kelihatan seperti halaman yang rosak. */
+      renderSubjects();
+
       el.btnChange.classList.add('hidden');   /* identiti tetap, tiada "bukan anda?" */
       el.whoName.title = state.email;
       selectTeacher(data.nama);
@@ -405,7 +416,7 @@ function refreshMe() {
 
 function renderSend() {
   renderBanner();
-  renderChips();
+  renderSubjects();
   renderOtherWeeks();
   renderAlready();
   renderFile();          /* mesti di sini juga: ia bergantung pada state.file
@@ -459,34 +470,98 @@ function renderBanner() {
   }
 }
 
-/* --- 10b. Chip subjek --- */
+/* --- 10b. Medan mata pelajaran (SATU <select>) ---
+   v22 menggantikan baris butang chip dan kotak taip dengan satu senarai
+   menurun. Senarai itu mengandungi SUBJEK GURU ITU SAHAJA - sama seperti chip
+   yang digantikannya, dan bukan senarai seluruh sekolah. Sebabnya: seorang guru
+   mengajar 2-4 subjek, jadi senarai 30 mata pelajaran hanya memperlahankan dia.
 
-function renderChips() {
-  el.subjectChips.innerHTML = '';
-  var subs = state.mySubjects.slice(0, 6);
-  if (!subs.length) return;
+   Tiga perkara yang tidak jelas dari kod:
 
-  subs.forEach(function (s) {
-    var c = document.createElement('button');
-    c.type = 'button';
-    c.className = 'chip';
-    c.textContent = s;
-    c.addEventListener('click', function () {
-      el.subject.value = s;
-      markChips();
-      renderSummary();
-    });
-    el.subjectChips.appendChild(c);
-  });
+   1. Sebab sebenar perubahan ini: <datalist> TIADA sokongan pada Safari iOS.
+      Di telefon, kotak taip itu tidak pernah mencadangkan apa-apa - guru
+      terpaksa menaip penuh setiap minggu.
+   2. Subjek yang guru TAIP SENDIRI mesti terselamat. Nilai itu tidak ada dalam
+      senarai, jadi ia disimpan sebagai pilihan "Lain-lain…" yang dipilih semula
+      oleh selectSubject(). Tanpa itu, menukar minggu akan menukar subjek guru
+      secara senyap - bukan sekadar paparan yang salah, tetapi data yang ditulis
+      ke Responses.
+   3. renderSubjects() mesti MENGEKALKAN pilihan semasa. Ia berjalan setiap kali
+      refreshMe() selesai (iaitu setiap kali minggu bertukar), dan membina
+      semula senarai tanpa memulihkan pilihan akan mengosongkan medan itu. */
 
-  markChips();
+function subjectIsLain() { return el.subject.value === SUBJEK_LAIN; }
+
+/* Nilai subjek yang SEBENAR - satu-satunya pembaca yang dibenarkan. Membaca
+   el.subject.value terus akan mengembalikan '__LAIN__', iaitu bug yang senyap. */
+function subjectValue() {
+  if (subjectIsLain()) return String(el.subjectLain.value || '').trim();
+  return String(el.subject.value || '').trim();
 }
 
-function markChips() {
-  var v = el.subject.value.trim();
-  Array.prototype.forEach.call(el.subjectChips.children, function (c) {
-    c.classList.toggle('on', c.textContent === v);
+function addOption(parent, value, label) {
+  var o = document.createElement('option');
+  o.value = value;
+  o.textContent = label;
+  parent.appendChild(o);
+}
+
+/* Tunjukkan kotak taip hanya untuk "Lain-lain…". Teks yang sudah ditaip TIDAK
+   dipadam apabila guru menukar kembali kepada senarai - menukar fikiran dua kali
+   tidak sepatutnya memusnahkan kerja guru. */
+function syncLain() {
+  el.subjectLain.classList.toggle('hidden', !subjectIsLain());
+}
+
+/* Tetapkan medan kepada nilai v. Kalau v tiada dalam senarai, ia menjadi
+   "Lain-lain…" - jadi tiada nilai yang boleh hilang. */
+function selectSubject(v) {
+  var s = String(v == null ? '' : v).trim();
+  var ada = false;
+
+  Array.prototype.forEach.call(el.subject.options, function (o) {
+    if (s && o.value === s) ada = true;
   });
+
+  if (ada) {
+    el.subject.value = s;
+    el.subjectLain.value = '';
+  } else if (s) {
+    el.subject.value = SUBJEK_LAIN;
+    el.subjectLain.value = s;
+  } else {
+    el.subject.value = '';
+    el.subjectLain.value = '';
+  }
+
+  syncLain();
+}
+
+function resetSubject() { selectSubject(''); }
+
+function renderSubjects() {
+  var dipilih = subjectValue();
+
+  el.subject.innerHTML = '';
+  addOption(el.subject, '', '— Pilih mata pelajaran —');
+
+  /* Subjek guru INI sahaja: rekod minggu ini dahulu (kalau ada), kemudian
+     sejarahnya sendiri, terbaru dahulu. Senarai datang daripada apiMe, yang
+     ditapis pada email pemanggil di server - jadi guru lain tidak pernah
+     melihat subjek guru lain. */
+  var sendiri = [];
+  if (state.record && state.record.subject) sendiri.push(state.record.subject);
+  state.mySubjects.forEach(function (s) {
+    if (sendiri.indexOf(s) === -1) sendiri.push(s);
+  });
+
+  sendiri.forEach(function (s) { addOption(el.subject, s, s); });
+
+  /* Tanpa ini, guru yang BELUM PERNAH menghantar tidak mempunyai satu pilihan
+     pun - dan satu-satunya medan wajib itu menjadi jalan mati. */
+  addOption(el.subject, SUBJEK_LAIN, 'Lain-lain — taip sendiri…');
+
+  selectSubject(dipilih);
 }
 
 /* --- 10c. Pilih minggu ---
@@ -650,7 +725,7 @@ function pilihFail(fail) {
 /* --- 10f. Ringkasan sebelum hantar --- */
 
 function renderSummary() {
-  var subject = el.subject.value.trim();
+  var subject = subjectValue();
   var f = state.file;
 
   var failTeks;
@@ -746,8 +821,14 @@ function onSubmit(ev) {
   ev.preventDefault();
   if (state.sending) return;
 
-  var subject = el.subject.value.trim();
-  if (!subject) { setMsg('Sila isi mata pelajaran.', 'bad'); el.subject.focus(); return; }
+  var subject = subjectValue();
+  if (!subject) {
+    setMsg('Sila pilih mata pelajaran.', 'bad');
+    /* Fokus mesti pergi ke kawalan yang benar-benar kosong - kalau tidak guru
+       melihat kursor berkelip pada senarai sambil diberitahu ia kosong. */
+    (subjectIsLain() ? el.subjectLain : el.subject).focus();
+    return;
+  }
 
   var fail = state.file;
 
@@ -854,7 +935,15 @@ el.btnChange.addEventListener('click', function () {
   el.search.focus();
 });
 
-el.subject.addEventListener('input', function () { markChips(); renderSummary(); });
+el.subject.addEventListener('change', function () {
+  syncLain();
+  /* Fokus melompat ke kotak taip supaya guru terus boleh menaip - satu ketikan
+     kurang, dan jelas bahawa "Lain-lain…" meminta teks. */
+  if (subjectIsLain()) el.subjectLain.focus();
+  renderSummary();
+});
+
+el.subjectLain.addEventListener('input', function () { renderSummary(); });
 
 el.file.addEventListener('change', function () {
   pilihFail(this.files && this.files[0]);
@@ -880,14 +969,14 @@ el.btnOther.addEventListener('click', function () {
 el.otherWeek.addEventListener('change', function () {
   state.targetWeek = Number(el.otherWeek.value) || state.currentWeek;
   state.mode = 'new';
-  el.subject.value = '';
+  resetSubject();
   resetFile();
   setMsg('');
   refreshMe();
 });
 
 el.btnAgain.addEventListener('click', function () {
-  el.subject.value = '';
+  resetSubject();
   resetFile();
   setMsg('');
   state.targetWeek = state.currentWeek;

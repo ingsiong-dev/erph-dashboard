@@ -145,9 +145,20 @@
 
       <div class="field">
         <label for="subject">Mata Pelajaran</label>
-        <div id="subject-chips" class="chips"></div>
-        <input id="subject" list="senarai-subjek" placeholder="Taip mata pelajaran"
-               autocomplete="off" autocapitalize="words" required>
+        <!-- v22: satu <select> menggantikan baris butang chip DAN kotak taip.
+             Ia menyenaraikan SUBJEK GURU ITU SAHAJA (daripada rekodnya sendiri),
+             sama seperti chip yang digantikannya - bukan senarai seluruh
+             sekolah. Sebabnya bukan gaya: <datalist> TIADA sokongan pada Safari
+             iOS, jadi di telefon guru terpaksa menaip penuh setiap minggu
+             walaupun pilihan itu sudah ada. <select> berfungsi pada setiap
+             telefon.
+             #subject-lain muncul hanya apabila guru memilih "Lain-lain…", jadi
+             subjek yang tiada dalam senarai (cth. "MM MPAK T5; MM T2") masih
+             boleh disimpan - had itu SENGAJA dikekalkan. -->
+        <select id="subject" required></select>
+        <input id="subject-lain" class="hidden" list="senarai-subjek"
+               placeholder="Taip mata pelajaran" autocomplete="off"
+               autocapitalize="words">
         <datalist id="senarai-subjek"></datalist>
       </div>
 
@@ -300,7 +311,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: '3c52c35',
+  build: 'b06a801',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
