@@ -72,6 +72,11 @@
         <div style="margin-top:10px" id="res-verdict"></div>
       </div>
 
+      <div id="server-box" class="box" style="display:none">
+        <span class="lbl">Disahkan oleh SERVER (Apps Script)</span>
+        <span id="server-result">—</span>
+      </div>
+
       <div id="diag" class="diag" style="display:none"></div>
 
       <p class="muted" style="margin-top:16px">
@@ -88,6 +93,7 @@
      blocked origin (no button), which wasted a test round on 17 Sep 2026.
      Overridable with ?client= for a different project. */
   var DEFAULT_CLIENT_ID = '314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com';
+  var BACKEND_URL = 'https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec';
   var clientId = new URLSearchParams(location.search).get('client') || DEFAULT_CLIENT_ID;
   var statusEl = document.getElementById('status');
   var diagEl   = document.getElementById('diag');
@@ -103,6 +109,32 @@
       while (p.length % 4) p += '=';
       return JSON.parse(decodeURIComponent(escape(atob(p))));
     } catch (e) { return { error: String(e) }; }
+  }
+
+  function verifyServer(token) {
+    var el = document.getElementById('server-box');
+    var out = document.getElementById('server-result');
+    el.style.display = 'block';
+    out.textContent = 'Mengesahkan di server…';
+    fetch(BACKEND_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'whoami', token: token }),
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d && d.ok) {
+          out.textContent = '✔ ' + d.callerEmail + (d.nama ? ' — ' + d.nama : '');
+          el.style.borderColor = '#bfe3cd';
+        } else {
+          out.textContent = '✘ Server TOLAK: ' + ((d && d.error) || JSON.stringify(d));
+          el.style.borderColor = '#f0c4c4';
+        }
+      })
+      .catch(function (e) {
+        out.textContent = 'Ralat panggilan server: ' + e;
+        el.style.borderColor = '#f0c4c4';
+      });
   }
 
   function onSignIn(resp) {
@@ -131,6 +163,7 @@
     var hd = payload.hd || '(tiada - akaun peribadi?)';
     document.getElementById('res-email').textContent = email;
     document.getElementById('res-hd').textContent = hd;
+    verifyServer(resp.credential);
     var v = document.getElementById('res-verdict');
     if (/@moe-dl\.edu\.my$/i.test(email)) {
       v.className = 'ok';
