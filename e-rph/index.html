@@ -42,7 +42,7 @@
          src="https://ingsiong-dev.github.io/erph-dashboard/e-rph/logo.png">
     <div class="gate-brand">e-RPH <span>· SMK Meradong</span></div>
     <h1>Log masuk dengan akaun Google</h1>
-    <p class="gate-sub">Pilih akaun yang berakhir dengan <strong>@moe-dl.edu.my</strong>.</p>
+    <p class="gate-sub">Pilih akaun <strong>guru</strong> anda — yang berakhir dengan <strong>@moe-dl.edu.my</strong>.</p>
     <a id="btn-google" class="g-btn" href="#">
       <svg class="g-logo" viewBox="0 0 48 48" aria-hidden="true">
         <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
@@ -311,7 +311,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: 'b06a801',
+  build: '7e66d0b',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -354,7 +354,10 @@ Object.keys(__API).forEach(function (name) {
           if (self._ok) self._ok(res);
         } else {
           var msg = (res && res.error) || 'Ralat server';
-          if (/token|log masuk|tamat tempoh/i.test(msg)) { __sessionExpired(msg); }
+          /* A refused ACCOUNT is checked first, because it is the more specific
+             condition and the two need different fallout - see __accessDenied(). */
+          if (__isDenied(msg)) { __accessDenied(); }
+          else if (/token|log masuk|tamat tempoh/i.test(msg)) { __sessionExpired(msg); }
           if (self._err) self._err(new Error(msg));
         }
       },
@@ -410,6 +413,38 @@ function __sessionExpired(msg) {
   __erph.token = null;
   __lsDel('erph-token');
   __showGate('Sesi log masuk telah tamat. Log masuk semula untuk meneruskan.');
+}
+
+/* Does this server message mean "the roster refused this ACCOUNT"? Every denial
+   thrown by the backend's DELIMA gate starts with this exact phrase, and no
+   transient failure (network, quota, bad payload) ever contains it - so this is
+   a precise test rather than a guess at what went wrong. */
+function __isDenied(msg) { return /akses ditolak/i.test(String(msg || '')); }
+
+/* A refused account must NOT be remembered.
+   Reported by the user on 18 Sep 2026 after trying a non-teacher account: the
+   refusal came back, and the phone then reproduced it on every visit - because
+   the token was still in localStorage, so each reload resumed the same refused
+   session and each "Cuba lagi" re-sent the same token.
+
+   Clearing the token is the whole fix, and it defeats the SILENT hop as well:
+   __boot() only calls __trySilent() for a device that still has a stored token
+   (that token is also where its login_hint comes from). No token, no prompt=none
+   - so the next tap on the button always reaches the account chooser, which is
+   the ONLY way a teacher can pick a different account. (test-pages-oauth.mjs §15
+   asserts that silence, so making the silent hop unconditional later would go
+   red rather than strand every refused teacher again.) */
+function __accessDenied() {
+  var t = __erph.token || __lsGet('erph-token');
+  var email = '';
+  if (t) { var c = __decodeJwt(t); if (c && c.email) email = c.email; }
+  __erph.token = null;
+  __lsDel('erph-token');
+  /* The app behind this gate also renders its own error card for the same
+     refusal, and that card's "Cuba lagi" would re-send the dead token. Name the
+     account and the way out here instead, where the teacher is looking. */
+  __showGate('Akaun ' + (email ? email : 'yang dipilih') + ' tiada dalam senarai guru. ' +
+             'Ketik butang di atas dan pilih akaun guru anda yang lain.');
 }
 
 function __acceptToken(token) {
