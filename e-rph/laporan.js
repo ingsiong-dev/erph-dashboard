@@ -164,7 +164,7 @@ function lapLoadGuru(cubaan) {
     if (n < 20) {
       lapEl('lap-dihantar').textContent = '—';
       lapEl('lap-rows').innerHTML =
-        '<tr><td colspan="5" class="lap-empty">Memuatkan…</td></tr>';
+        '<tr><td colspan="5" class="lap-empty">Loading…</td></tr>';
       lapEl('lap-note').textContent = '';
       setTimeout(function () { lapLoadGuru(n + 1); }, 150);
       return;
@@ -185,7 +185,7 @@ function lapLoadGuru(cubaan) {
   lapRenderNama();
   lapEl('lap-dihantar').textContent = '—';
   lapEl('lap-rows').innerHTML =
-    '<tr><td colspan="5" class="lap-empty">Memuatkan…</td></tr>';
+    '<tr><td colspan="5" class="lap-empty">Loading…</td></tr>';
   lapEl('lap-note').textContent = '';
 
   /* `email` dihantar hanya kerana ia slot pertama tandatangan pelayan; pelayan
@@ -200,7 +200,7 @@ function lapLoadGuru(cubaan) {
     .catch(function (err) {
       lapEl('lap-dihantar').textContent = '—';
       lapEl('lap-rows').innerHTML =
-        '<tr><td colspan="5" class="lap-empty">Gagal memuatkan: ' +
+        '<tr><td colspan="5" class="lap-empty">Gagal loading: ' +
         escapeHtml(err.message) + '</td></tr>';
     });
 }
