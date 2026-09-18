@@ -482,6 +482,17 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   padding: 6px 16px 30px;
 }
 
+/* Versi build, diisi oleh app.js daripada CONFIG.VERSI. Diletakkan pada barisnya
+   sendiri dan lebih pudar daripada teks footer: ia untuk pentadbir yang perlu
+   tahu build mana yang sampai kepada guru, bukan untuk guru baca. */
+.foot-versi {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  opacity: .75;
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 380px) {
   .card { padding: 18px 15px; }
   h2.big { font-size: 19px; }
@@ -692,30 +703,6 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 }
 
 .lap-padam-head, .lap-table td.lap-padam { width: 1%; text-align: right; white-space: nowrap; }
-
-/* Butang UBAH SUAI pada setiap baris sendiri, di sebelah KIRI tong sampah.
-   Bentuknya sama dengan .lap-del supaya kedua-duanya sejajar, tetapi warnanya
-   BIRU dan bukan merah: ia tidak merosakkan apa-apa, jadi ia tidak sepatutnya
-   kelihatan berbahaya. Tindakan merosakkan diletakkan paling kanan supaya tidak
-   tersentuh apabila guru menyasarkan butang ubah suai. */
-.lap-edit {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: 8px;
-  padding: 4px 7px;
-  margin-right: 2px;
-  font-family: inherit;
-  font-size: 15px;
-  line-height: 1;
-  cursor: pointer;
-  color: var(--blue);
-  transition: background .18s ease, box-shadow .24s ease;
-}
-
-.lap-edit:hover, .lap-edit:focus-visible {
-  background: var(--blue-soft);
-  box-shadow: 0 0 0 4px rgba(11, 79, 158, .14);
-}
 
 .lap-del {
   background: none;

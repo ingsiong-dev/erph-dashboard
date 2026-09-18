@@ -29,7 +29,13 @@ var CONFIG = {
      Minggu cuti tetap BOLEH dihantar dan tetap dikira, supaya penyebut
      "Jumlah Minggu Persekolahan Tahun 2026" (47) benar-benar boleh dicapai -
      sama seperti tingkah laku borang Google yang digantikan. */
-  HOLIDAY_WEEKS: [6, 11, 20, 21, 34]
+  HOLIDAY_WEEKS: [6, 11, 20, 21, 34],
+
+  /* Versi yang DIPAPARKAN pada footer halaman. Ini SATU-SATUNYA tempat nombor
+     itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
+     deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
+     deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
+  VERSI: 'v2.28'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -197,7 +203,8 @@ var el = {
   scrDone: $('scr-done'),
   doneDetail: $('done-detail'),
   doneLink: $('done-link'),
-  btnAgain: $('btn-again')
+  btnAgain: $('btn-again'),
+  footVersi: $('foot-versi')
 };
 
 /* ============================================================
@@ -216,12 +223,10 @@ var state = {
   record: null,         // rekod sedia ada untuk targetWeek
   file: null,           // fail RPH yang dipilih (objek File), atau null
   linkLama: '',         // pautan rekod sedia ada, dikekalkan kalau tiada fail baharu
-  mode: 'new',          /* 'new' | 'replace'. 'replace' bermakna guru menekan butang
-                           pensel pada halaman Laporan: borang dibuka semula untuk
-                           minggu yang SUDAH dihantar supaya failnya boleh diganti.
-                           renderAlready() membaca flag ini untuk memutuskan sama
-                           ada borang atau kad "sudah hantar" dipaparkan. */
-  editAdopted: false,   // rekod minggu ini sudah disalin ke borang (mod ganti)
+  mode: 'new',          /* v28: 'replace' pergi bersama butang pensel (v17 dahulu,
+                           v27 sekali lagi), jadi ini sentiasa 'new'. Dikekalkan
+                           kerana renderAlready() membacanya untuk memilih borang
+                           lawan kad "sudah hantar". */
   sending: false
 };
 
@@ -297,6 +302,13 @@ var SLOW_SERVER_MSG = 'Pelayan mengambil masa terlalu lama (lebih 45 saat). ' +
 
 function boot() {
   el.tahun.textContent = CONFIG.TAHUN;
+
+  /* Versi pada footer datang daripada CONFIG.VERSI sahaja. Halaman ini
+     disajikan oleh Apps Script dan guru tidak boleh "clear cache", jadi nombor
+     versi yang kelihatan ialah cara terpantas untuk tahu build mana yang
+     sebenarnya sampai kepada mereka. */
+  if (el.footVersi) el.footVersi.textContent = CONFIG.VERSI;
+
   show('load');
 
   withTimeout(serverCall('apiBootstrap'), SLOW_SERVER_MS, SLOW_SERVER_MSG)
@@ -406,7 +418,6 @@ function refreshMe() {
       state.weeks = (data && data.weeks) || [];
       state.mySubjects = (data && data.subjects) || [];
       state.record = (data && data.record) || null;
-      adoptRecordForEdit();      /* mesti SEBELUM renderSend() - lihat nota di bawah */
       renderSend();
     })
     .catch(function (err) {
@@ -418,55 +429,12 @@ function refreshMe() {
     });
 }
 
-/* --- 10b-bis. UBAH SUAI dari halaman Laporan e-RPH (butang pensel) ---
-   Membuka semula halaman Hantar untuk minggu itu DALAM MOD GANTI. Tanpa
-   menukar mode, renderAlready() akan mengunci guru pada kad "sudah hantar"
-   (locked = mode 'new' && sudah dihantar && ada rekod) dan tiada apa yang
-   boleh diubah - jadi menukar mode ialah keseluruhan perubahan ini. */
-function editWeek(minggu) {
-  state.targetWeek = Number(minggu) || state.currentWeek;
-  state.mode = 'replace';
-  state.editAdopted = false;        /* rekod minggu ini belum disalin ke borang */
-  state.file = null;
-  /* resetSubject(), bukan el.subject.value = '' terus: setiap baca/tulis medan
-     subjek mesti melalui helper, kerana "Lain-lain" ialah sentinel dan nilainya
-     sebenar hidup dalam kotak taip di sebelahnya. */
-  resetSubject();
-  state.linkLama = '';
-  el.url.value = '';
-  if (el.file) el.file.value = '';
-  setMsg('');
-
-  /* Tukar ke halaman Hantar. switchPage() tinggal dalam Laporan.js, yang
-     dimuatkan SELEPAS fail ini - ia wujud pada masa klik, bukan pada masa
-     hurai, jadi rujukan ini selamat. */
-  if (typeof switchPage === 'function') switchPage('hantar');
-  show('send');
-  refreshMe();
-}
-
-/* Apabila rekod minggu itu tiba semasa MOD GANTI, salin subjek dan pautan
-   failnya ke dalam borang - SEKALI sahaja, supaya fail yang guru pilih sendiri
-   tidak ditimpa.
-
-   Ini BUKAN kosmetik. submit_ menulis semula baris itu daripada apa yang
-   dihantar, jadi guru yang menekan pensel lalu terus HANTAR tanpa memilih fail
-   baharu mesti membawa pautan lama bersama. Tanpa fungsi ini barisnya ditulis
-   dengan pautan KOSONG dan fail RPH asal hilang dari rekod - pemadaman data
-   yang senyap, daripada satu butang yang nampak tidak berbahaya. */
-function adoptRecordForEdit() {
-  if (state.mode !== 'replace' || !state.record || state.editAdopted) return;
-  state.editAdopted = true;
-
-  /* selectSubject(), bukan el.subject.value = ...: kalau subjek itu tiada dalam
-     senarai guru, ia menjadi "Lain-lain" dan nilainya disimpan dalam kotak taip
-     - jadi tiada subjek yang boleh hilang. */
-  selectSubject(state.record.subject || '');
-  state.linkLama = state.record.url || '';
-  el.url.value = state.linkLama;
-  state.file = null;
-  if (el.file) el.file.value = '';
-}
+/* v28: butang UBAH SUAI pada halaman Laporan DIBUANG.
+   Pengguna: *"感觉修改键很多余。有错误叫老师删掉重新上载就可以了。"*
+   - the same call as v17, so editWeek(), adoptRecordForEdit() dan
+   state.editAdopted semuanya dibuang BERSAMA butang itu; kod mati yang masih
+   boleh dicapai ialah bug yang menunggu untuk berlaku. Aliran yang tinggal:
+   PADAM di halaman Laporan e-RPH, kemudian muat naik semula. */
 
 function renderSend() {
   renderBanner();

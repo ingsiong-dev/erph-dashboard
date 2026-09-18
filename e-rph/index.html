@@ -308,7 +308,7 @@
                 <th>Mata Pelajaran</th>
                 <th>RPH</th>
                 <th>Semakan</th>
-                <th class="lap-padam-head"><span class="sr-only">Ubah suai atau padam</span></th>
+                <th class="lap-padam-head"><span class="sr-only">Padam</span></th>
               </tr>
             </thead>
             <tbody id="lap-rows"></tbody>
@@ -323,7 +323,12 @@
 
 </main>
 
-<footer class="foot">e-RPH · SMK Meradong · Sesi 2026</footer>
+<footer class="foot">
+  e-RPH · SMK Meradong · Sesi 2026
+  <!-- Diisi oleh app.js daripada CONFIG.VERSI. Sengaja KOSONG di sini supaya
+       nombor versi hidup di SATU tempat sahaja; dua salinan akan menyimpang. -->
+  <span class="foot-versi" id="foot-versi"></span>
+</footer>
 
 
 
@@ -337,7 +342,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: '45a9206',
+  build: 'da04cf0',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
