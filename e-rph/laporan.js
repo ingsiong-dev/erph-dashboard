@@ -62,6 +62,12 @@ var LAP_FILE_SVG =
   'stroke-linejoin="round" d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 ' +
   '2-2V8.5zM13.5 3v5.5H19"/></svg>';
 
+/* Ikon pensel untuk "Ubah suai". SVG sebaris juga - sebab yang sama. */
+var LAP_EDIT_SVG =
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">' +
+  '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+  'stroke-linejoin="round" d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>';
+
 /* ------------------------------------------------------------
    Penukar halaman
    ------------------------------------------------------------ */
@@ -277,7 +283,7 @@ function lapRenderGuru(data) {
       tr.appendChild(tdSubjek);
       tr.appendChild(tdPautan);
       tr.appendChild(tdSemakan);
-      tr.appendChild(lapDeleteCell(r.minggu, sendiri));
+      tr.appendChild(lapActionCell(r.minggu, sendiri));
       frag.appendChild(tr);
     });
 
@@ -346,8 +352,17 @@ function lapDisableAll(yes) {
   });
 }
 
-/* Satu sel: tong sampah untuk rekod sendiri, sengkang untuk rekod orang lain. */
-function lapDeleteCell(minggu, sendiri) {
+/* Satu sel TINDAKAN: UBAH SUAI (pensel) + PADAM (tong sampah) untuk rekod
+   sendiri; sengkang untuk rekod orang lain.
+
+   Susunan pensel-dahulu-tong-sampah adalah SENGAJA: tindakan yang merosakkan
+   diletakkan paling kanan, jauh daripada tempat guru menyasarkan apabila dia
+   mahu mengubah suai. Kedua-duanya ikon SVG sebaris - bukan emoji, kerana emoji
+   bergantung pada fon sistem (lihat LAP_TRASH_SVG).
+
+   Ia dipanggil lapActionCell dan bukan lapDeleteCell kerana sel ini kini
+   mengandungi DUA tindakan; nama lama akan menyesatkan. */
+function lapActionCell(minggu, sendiri) {
   var td = document.createElement('td');
   td.className = 'lap-padam';
 
@@ -355,10 +370,22 @@ function lapDeleteCell(minggu, sendiri) {
     var kosong = document.createElement('span');
     kosong.className = 'lap-del-none';
     kosong.textContent = '—';
-    kosong.title = 'Hanya guru sendiri boleh memadam rekodnya.';
+    kosong.title = 'Hanya guru sendiri boleh mengubah atau memadam rekodnya.';
     td.appendChild(kosong);
     return td;
   }
+
+  /* Ubah suai membuka semula halaman Hantar untuk minggu ini dalam mod ganti. */
+  var ubah = document.createElement('button');
+  ubah.type = 'button';
+  ubah.className = 'lap-edit';
+  ubah.innerHTML = LAP_EDIT_SVG;
+  ubah.dataset.minggu = String(minggu);
+  ubah.title = 'Ubah suai rekod ' + weekLabel(minggu) +
+               ' — pilih fail RPH baharu untuk menggantikannya';
+  ubah.setAttribute('aria-label', 'Ubah suai rekod ' + weekLabel(minggu));
+  ubah.addEventListener('click', function () { editWeek(minggu); });
+  td.appendChild(ubah);
 
   var btn = document.createElement('button');
   btn.type = 'button';

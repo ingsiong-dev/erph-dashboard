@@ -693,6 +693,30 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .lap-padam-head, .lap-table td.lap-padam { width: 1%; text-align: right; white-space: nowrap; }
 
+/* Butang UBAH SUAI pada setiap baris sendiri, di sebelah KIRI tong sampah.
+   Bentuknya sama dengan .lap-del supaya kedua-duanya sejajar, tetapi warnanya
+   BIRU dan bukan merah: ia tidak merosakkan apa-apa, jadi ia tidak sepatutnya
+   kelihatan berbahaya. Tindakan merosakkan diletakkan paling kanan supaya tidak
+   tersentuh apabila guru menyasarkan butang ubah suai. */
+.lap-edit {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  padding: 4px 7px;
+  margin-right: 2px;
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--blue);
+  transition: background .18s ease, box-shadow .24s ease;
+}
+
+.lap-edit:hover, .lap-edit:focus-visible {
+  background: var(--blue-soft);
+  box-shadow: 0 0 0 4px rgba(11, 79, 158, .14);
+}
+
 .lap-del {
   background: none;
   border: 1px solid transparent;
@@ -720,21 +744,31 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 /* Guru lain: tiada butang, hanya nota kecil supaya lajur tidak kelihatan rosak. */
 .lap-del-none { color: #c3cbd6; font-size: 13px; }
 
-/* ---------- v25: tiga kawalan borang Hantar dikecilkan lebarnya ----------
-   Permintaan pengguna: "pilih mata pelajaran, pilih fail RPH, hantar RPH 也收窄".
-   Ketiga-tiganya menegang selebar kad (622px pada skrin luas) dan itu yang
-   menjadikan borang kelihatan berat. Kini ketiga-tiganya berkongsi SATU lebar
-   supaya tepi kirinya sejajar - sama seperti kotak Tahun dan butang Cetak
-   Laporan pada halaman Laporan (v24).
+/* ---------- v27: tiga kawalan borang Hantar - TINGGI dikurangkan ----------
+   Permintaan pengguna: "那3个按键是上下收窄。刚才的长度没问题。" - the v25 attempt
+   narrowed them SIDEWAYS, which was the wrong axis. The width was fine, so the
+   cap is gone and the height is reduced instead, to 42px: the same height as the
+   Laporan page's Tahun box and Cetak Laporan button (v24), so both pages agree.
 
-   max-width, BUKAN width tetap. Pada telefon (skrin <= 430px) kad sudah lebih
-   sempit daripada 420px, jadi ketiga-tiganya kekal PENUH - dan penuh memang
-   betul pada telefon. Ini hanya mengubah paparan skrin lebar. */
+   font-size pada #subject KEKAL 16px. Di bawah 16px Safari iOS mengezum halaman
+   apabila medan difokus - itu sebab `input, select` memakai 16px sejak awal.
+   Jadi tinggi dikurangkan melalui `height` dan padding, BUKAN melalui saiz fon. */
 #subject,
 #subject-lain,
 .file-btn,
 #btn-submit {
-  max-width: 420px;
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* Butang dan label bukan medan borang, jadi teksnya perlu dipusatkan sendiri
+   apabila tinggi dikunci. */
+.file-btn,
+#btn-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ============================================================
