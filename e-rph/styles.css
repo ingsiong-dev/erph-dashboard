@@ -520,10 +520,40 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 /* ---------- Laporan e-RPH ---------- */
 
-.lap-controls { display: grid; grid-template-columns: 1fr 130px; gap: 10px; }
+.lap-controls { display: grid; grid-template-columns: 1fr 132px; gap: 10px; align-items: start; }
 
 @media (max-width: 430px) {
   .lap-controls { grid-template-columns: 1fr; }
+}
+
+/* Lajur kanan: Tahun di atas, Cetak Laporan di bawahnya - DUA kawalan SAIZ SAMA.
+   Sebelum ini kotak Tahun memakai gaya medan penuh (padding 14px, font 16px,
+   tinggi ~57px), dan itu terlalu besar untuk empat angka; butang Cetak Laporan
+   pula selebar halaman. Kedua-duanya kini berkongsi satu tinggi (42px) dan satu
+   lebar (lajur ini). Dua kawalan bertindan yang tidak sama saiz kelihatan seperti
+   pepijat susun atur, jadi saiznya dikunci di sini dan bukan diwarisi. */
+.lap-tahun-col { display: flex; flex-direction: column; gap: 7px; }
+.lap-tahun-col label { margin: 0; }
+
+#lap-tahun {
+  height: 42px;
+  padding: 0 10px;
+  font-size: 14px;
+  border-width: 1.5px;
+  border-radius: 10px;
+}
+
+#btn-cetak {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 6px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.1;
+  text-align: center;
+  border-radius: 10px;
 }
 
 .lap-scores {

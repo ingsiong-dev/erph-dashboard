@@ -255,32 +255,37 @@
                  laporannya sendiri, jadi tiada apa-apa untuk dipilih. -->
             <p class="lap-guru-nama" id="lap-guru-nama">—</p>
           </div>
-          <div>
+          <div class="lap-tahun-col">
             <label for="lap-tahun">Tahun</label>
             <select id="lap-tahun"></select>
+
+            <!-- Cetak Laporan: satu ketukan terus ke laporan Looker Studio.
+                 Ia duduk DI BAWAH kotak Tahun dan SAIZ SAMA dengannya - bukan
+                 butang selebar halaman. Sebab saiznya dikunci: dua kawalan
+                 bertindan dalam satu lajur yang tidak sama lebar/tinggi
+                 kelihatan seperti pepijat susun atur.
+
+                 target="_blank", BUKAN "_top". Halaman ini dihidangkan di DALAM
+                 iframe ber-sandbox Apps Script (nota penuh di skrin pilih akaun
+                 di atas), jadi "_top" akan menavigasi guru KELUAR daripada
+                 aplikasi ini: dia hilang borang dan terpaksa membuka pautan
+                 e-RPH semula. Pautan "Buka RPH saya" pada skrin siap sudah
+                 memakai "_blank" dan terbukti berfungsi dalam sandbox yang sama.
+
+                 URL ini SENGAJA tiada segmen "/u/0/". Segmen itu mengunci
+                 laporan kepada akaun Google SLOT 0 pelayar; pada telefon slot itu
+                 selalunya Gmail peribadi, jadi guru yang sah akan melihat "anda
+                 memerlukan akses". Tanpanya Google memilih akaun yang sudah log
+                 masuk.
+
+                 Ia kekal di dalam kad ATAS sekali: di bawah jadual 36 baris ia
+                 akan berada jauh di luar skrin - pengajaran yang sama yang
+                 menghasilkan "2 kali tekan" pada butang padam (v15). -->
+            <a class="btn lap-cetak" id="btn-cetak"
+               href="https://datastudio.google.com/reporting/3c3848cc-7cf3-4a44-a937-ce9d60c42607/page/page_12345"
+               target="_blank" rel="noopener">Cetak Laporan</a>
           </div>
         </div>
-
-        <!-- Cetak Laporan: satu ketukan terus ke laporan Looker Studio.
-
-             target="_blank", BUKAN "_top". Halaman ini dihidangkan di DALAM
-             iframe ber-sandbox Apps Script (nota penuh di skrin pilih akaun di
-             atas), jadi "_top" akan menavigasi guru KELUAR daripada aplikasi ini:
-             dia hilang borang dan terpaksa membuka pautan e-RPH semula. Pautan
-             "Buka RPH saya" pada skrin siap sudah memakai "_blank" dan terbukti
-             berfungsi dalam sandbox yang sama.
-
-             URL ini SENGAJA tiada segmen "/u/0/". Segmen itu mengunci laporan
-             kepada akaun Google SLOT 0 pelayar; pada telefon slot itu selalunya
-             Gmail peribadi, jadi guru yang sah akan melihat "anda memerlukan
-             akses". Tanpanya Google memilih akaun yang sudah log masuk.
-
-             Kedudukannya di dalam kad ATAS sekali: di bawah jadual 36 baris ia
-             akan berada jauh di luar skrin - pengajaran yang sama yang
-             menghasilkan "2 kali tekan" pada butang padam (v15). -->
-        <a class="btn big block" id="btn-cetak"
-           href="https://datastudio.google.com/reporting/3c3848cc-7cf3-4a44-a937-ce9d60c42607/page/page_12345"
-           target="_blank" rel="noopener">Cetak Laporan</a>
       </div>
 
       <div class="lap-scores">
@@ -332,7 +337,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: '1be616b',
+  build: 'a10b8b8',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
