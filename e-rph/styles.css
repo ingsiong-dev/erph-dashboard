@@ -622,6 +622,35 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .lap-table a { color: var(--blue); word-break: break-all; }
 
+/* Pautan fail RPH: SATU IKON, bukan URL.
+   URL Drive ialah ~74 aksara. Dipaparkan sebagai teks ia membalut tiga baris,
+   memaksa lajur itu lebar dan menjadikan seluruh jadual sukar dibaca - sedangkan
+   tiada guru perlu membaca id fail itu; mereka hanya perlu menekannya.
+   Bentuknya meniru .lap-del (butang ikon 34px) supaya kedua-dua lajur tindakan
+   sejajar. */
+.lap-fail-cell { width: 1%; white-space: nowrap; }
+
+.lap-fail {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  color: var(--blue);
+  background: var(--blue-soft);
+  text-decoration: none;
+  vertical-align: middle;
+  transition: background .18s ease, border-color .18s ease, box-shadow .24s ease;
+}
+
+.lap-fail:hover, .lap-fail:focus-visible {
+  background: #d9e8fb;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(11, 79, 158, .14);
+}
+
 .pill {
   display: inline-block;
   padding: 3px 9px;
@@ -690,6 +719,23 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 /* Guru lain: tiada butang, hanya nota kecil supaya lajur tidak kelihatan rosak. */
 .lap-del-none { color: #c3cbd6; font-size: 13px; }
+
+/* ---------- v25: tiga kawalan borang Hantar dikecilkan lebarnya ----------
+   Permintaan pengguna: "pilih mata pelajaran, pilih fail RPH, hantar RPH 也收窄".
+   Ketiga-tiganya menegang selebar kad (622px pada skrin luas) dan itu yang
+   menjadikan borang kelihatan berat. Kini ketiga-tiganya berkongsi SATU lebar
+   supaya tepi kirinya sejajar - sama seperti kotak Tahun dan butang Cetak
+   Laporan pada halaman Laporan (v24).
+
+   max-width, BUKAN width tetap. Pada telefon (skrin <= 430px) kad sudah lebih
+   sempit daripada 420px, jadi ketiga-tiganya kekal PENUH - dan penuh memang
+   betul pada telefon. Ini hanya mengubah paparan skrin lebar. */
+#subject,
+#subject-lain,
+.file-btn,
+#btn-submit {
+  max-width: 420px;
+}
 
 /* ============================================================
    Skrin "pilih akaun Google" (akses ditolak)

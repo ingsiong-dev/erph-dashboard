@@ -53,6 +53,15 @@ var LAP_TRASH_SVG =
   'stroke-linejoin="round" d="M4 7h16M9.5 4h5M6.5 7l.9 12.1a1.6 1.6 0 0 0 1.6 1.5h6a1.6 ' +
   '1.6 0 0 0 1.6-1.5L17.5 7M10.2 11v6M13.8 11v6"/></svg>';
 
+/* Ikon "fail RPH" - dokumen dengan penjuru berlipat. Sama sebabnya dengan tong
+   sampah di atas: SVG sebaris, bukan emoji, kerana emoji bergantung pada fon
+   sistem. currentColor supaya ia mengikut warna .lap-fail. */
+var LAP_FILE_SVG =
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">' +
+  '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+  'stroke-linejoin="round" d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 ' +
+  '2-2V8.5zM13.5 3v5.5H19"/></svg>';
+
 /* ------------------------------------------------------------
    Penukar halaman
    ------------------------------------------------------------ */
@@ -230,13 +239,29 @@ function lapRenderGuru(data) {
       tdSubjek.textContent = r.subjek || '';
 
       var tdPautan = document.createElement('td');
+      tdPautan.className = 'lap-fail-cell';
       if (r.url) {
         var a = document.createElement('a');
+        a.className = 'lap-fail';
         a.href = r.url;
         a.target = '_blank';
         a.rel = 'noopener';
-        a.textContent = r.url;
+        /* Ikon, BUKAN teks URL. URL Drive ~74 aksara membalut tiga baris dan
+           melebarkan lajur ini sehingga jadual sukar dibaca; tiada guru perlu
+           membaca id fail itu - mereka hanya perlu menekannya. Teks penuh masih
+           ada dalam title dan aria-label, jadi maklumat tidak hilang. */
+        a.innerHTML = LAP_FILE_SVG;
+        a.title = 'Buka fail RPH ' + weekLabel(r.minggu);
+        a.setAttribute('aria-label', 'Buka fail RPH ' + weekLabel(r.minggu));
         tdPautan.appendChild(a);
+      } else {
+        /* Sama seperti lajur padam: sengkang, bukan sel kosong - sel kosong
+           kelihatan seperti paparan yang rosak. */
+        var tiadaFail = document.createElement('span');
+        tiadaFail.className = 'lap-del-none';
+        tiadaFail.textContent = '—';
+        tiadaFail.title = 'Tiada fail dimuat naik untuk minggu ini.';
+        tdPautan.appendChild(tiadaFail);
       }
 
       var tdSemakan = document.createElement('td');
