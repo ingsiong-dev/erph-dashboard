@@ -1016,7 +1016,34 @@ el.fileClear.addEventListener('click', function () {
 
 /* v29: pendengar #btn-other / #other-week dibuang bersama kawalan itu. Setiap
    chip minggu memasang pengekliknya sendiri dalam renderProgress(), jadi tiada
-   pendengar global yang tinggal untuk dijaga di sini. */
+   pendengar global yang tinggal untuk dijaga di sini.
+
+   v30: satu-satunya pendengar global yang ditambah ialah keadaan "ditekan".
+   Ia dipasang SEKALI pada bekas #weeks, bukan satu pada setiap chip: chip
+   dibina semula pada setiap render, jadi 47 pendengar setiap kali render akan
+   menimbun. */
+function tandaTekan(ev) {
+  var n = ev && ev.target;
+  if (n && n.classList && n.classList.contains('week-chip') &&
+      n.classList.contains('pilih')) {
+    n.classList.add('tekan');
+  }
+}
+
+/* Buang .tekan daripada SEMUA chip, bukan hanya sasaran: jari yang menggelongsor
+   keluar dari kekunci kemudian dilepaskan di luar #weeks tidak akan memicu
+   pointerup di sini, dan kekunci itu akan kekal kelihatan tertekan. */
+function bersihTekan() {
+  var anak = el.weeks.children || [];
+  for (var i = 0; i < anak.length; i++) {
+    if (anak[i] && anak[i].classList) anak[i].classList.remove('tekan');
+  }
+}
+
+el.weeks.addEventListener('pointerdown', tandaTekan);
+['pointerup', 'pointercancel', 'pointerout'].forEach(function (jenis) {
+  el.weeks.addEventListener(jenis, bersihTekan);
+});
 
 el.btnAgain.addEventListener('click', function () {
   resetSubject();

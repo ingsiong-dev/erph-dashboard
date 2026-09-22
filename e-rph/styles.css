@@ -431,6 +431,39 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   outline-offset: 1px;
 }
 
+/* v30: chip yang boleh diklik TIMBUL seperti kekunci, dan TURUN semasa ditekan.
+   Dua sebab ia berbaloi:
+     1. maklum balas sentuhan - hover tidak wujud pada telefon, jadi tanpa ini
+        satu ketukan tidak memberi tanda apa-apa sehingga halaman bertukar;
+     2. ia membezakan minggu yang BOLEH diklik daripada minggu hadapan, yang
+        sengaja kekal rata dan tidak boleh ditekan.
+   `--chip-edge` ialah warna "sisi kekunci" di bawah chip: warna yang lebih
+   gelap daripada latarnya sendiri, supaya setiap keadaan (selesai / belum /
+   cuti) ada sisi yang betul warnanya. */
+.week-chip.pilih {
+  --chip-edge: #cfd8e3;
+  box-shadow: 0 2px 0 var(--chip-edge), 0 3px 4px rgba(16, 32, 48, .13);
+  transition: transform .08s ease, box-shadow .08s ease;
+}
+
+.week-chip.miss.pilih { --chip-edge: #e3bcbc; }
+.week-chip.done.pilih { --chip-edge: #0f6b39; }
+.week-chip.cuti.pilih { --chip-edge: #d0d0d0; }
+
+/* Kedua-dua `:active` (desktop) dan `.tekan` (ditambah oleh app.js pada
+   pointerdown) ada di sini atas satu sebab: iOS tidak memicu `:active` pada
+   elemen bukan butang dengan boleh diharap, jadi kelas itu yang menjamin
+   kekunci benar-benar turun pada telefon. */
+.week-chip.pilih:active,
+.week-chip.pilih.tekan {
+  transform: translateY(2px);
+  box-shadow: 0 0 0 var(--chip-edge), 0 1px 1px rgba(16, 32, 48, .10);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .week-chip.pilih { transition: none; }
+}
+
 /* Minggu yang sedang dipilih. Menggantikan cincin .now (bukan ditambah di
    atasnya - dua cincin pada satu chip nampak seperti pepijat), kerana selepas
    guru mengklik minggu lama, cincin itu mesti berada pada minggu ITU. */
