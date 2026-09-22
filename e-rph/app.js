@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.28'
+  VERSI: 'v2.29'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -606,7 +606,7 @@ function selectableWeeks() {
 /* Minggu 1..currentWeek sahaja: guru tidak boleh menghantar untuk minggu yang
    belum berlaku, jadi menawarkannya hanya menjemput data palsu. */
 function weekStatusText(w) {
-  return state.weeks.indexOf(w) !== -1 ? 'sudah dihantar ✓' : 'belum dihantar';
+  return state.weeks.indexOf(w) !== -1 ? 'Sudah dihantar ✓' : 'Belum dihantar';
 }
 
 /* Bertukar kepada minggu yang diklik - sama seperti <select> dahulu: subjek dan
@@ -759,6 +759,9 @@ function pilihFail(fail) {
 
 /* --- 10f. Ringkasan sebelum hantar --- */
 
+/* v32: tiga teks ini ialah LABEL dalam jadual, bukan pertengahan ayat - jadi
+   huruf besar pada perkataan pertama ("belum" -> "Belum", permintaan pengguna).
+   Ayat penuh di tempat lain (cth. "Sesi belum bermula.") kekal seperti adanya. */
 function renderSummary() {
   var subject = subjectValue();
   var f = state.file;
@@ -768,15 +771,15 @@ function renderSummary() {
     failTeks = escapeHtml(f.name) +
                ' <span class="muted">(' + saizMb(f.size) + ')</span>';
   } else if (state.linkLama) {
-    failTeks = '<span class="muted">fail sedia ada dikekalkan</span>';
+    failTeks = '<span class="muted">Fail sedia ada dikekalkan</span>';
   } else {
-    failTeks = '<span class="muted">belum dipilih</span>';
+    failTeks = '<span class="muted">Belum dipilih</span>';
   }
 
   var rows = [
     ['Minggu', weekLabel(state.targetWeek)],
     ['Guru', state.teacher || '—'],
-    ['Subjek', subject || '<span class="muted">belum diisi</span>'],
+    ['Subjek', subject || '<span class="muted">Belum diisi</span>'],
     ['Fail RPH', failTeks]
   ];
 
@@ -823,10 +826,10 @@ function renderProgress() {
       chip.title = weekLabel(w) + ' — cuti';
     } else if (state.weeks.indexOf(w) !== -1) {
       chip.classList.add('done');
-      chip.title = weekLabel(w) + ' — selesai';
+      chip.title = weekLabel(w) + ' — ' + weekStatusText(w);
     } else if (w <= state.currentWeek) {
       chip.classList.add('miss');
-      chip.title = weekLabel(w) + ' — belum dihantar';
+      chip.title = weekLabel(w) + ' — ' + weekStatusText(w);
     } else {
       chip.title = weekLabel(w) + ' — akan datang';
     }
@@ -838,7 +841,11 @@ function renderProgress() {
        yang belum berlaku kekal sebagai paparan sahaja. */
     if (bolehPilih.indexOf(w) !== -1) {
       chip.classList.add('pilih');
-      chip.title += ' · ' + weekStatusText(w) + ' — klik untuk pilih';
+      /* v32: status TIDAK diulang di sini. Versi v29 menambah
+         "· belum dihantar — klik untuk pilih" pada tajuk yang sudah berbunyi
+         "— belum dihantar", jadi tooltip itu menyebut perkara yang sama dua
+         kali. Status kini datang dari satu tempat sahaja (tajuk di atas). */
+      chip.title += ' — klik untuk pilih';
       chip.setAttribute('role', 'button');
       chip.setAttribute('tabindex', '0');
       chip.addEventListener('click', klikMinggu(w));

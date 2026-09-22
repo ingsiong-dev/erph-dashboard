@@ -17,13 +17,13 @@
   --line: #dde5ee;
   --bg: #eef2f7;
   --radius: 16px;
-  /* Cincin pada peta kemajuan. Sengaja CERAH: chip minggu sudah berwarna
-     (hijau / merah jambu / kelabu), jadi cincin biru gelap mengalahkan
-     nombor minggu itu sendiri. `--ring-sel` satu langkah lebih kuat daripada
-     `--ring-now` supaya "minggu semasa" dan "minggu yang sedang dipilih"
-     masih boleh dibezakan. */
-  --ring-now: #a8c8e8;
-  --ring-sel: #78a8d8;
+  /* Warna "kedudukan" pada peta kemajuan (v31: menggantikan cincin - pengguna
+     meminta cincin dibuang). `--semasa` menandakan minggu semasa, dan
+     `--pilih` minggu yang sedang dihantar/dikemas kini; `--pilih` lebih pekat
+     supaya kedua-duanya masih boleh dibezakan. */
+  --semasa: #a9cbe9;
+  --semasa-teks: #0b3c73;
+  --semasa-sisi: #8ab4dc;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -390,6 +390,11 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .progress-head strong { font-size: 17px; color: var(--blue); }
 
+/* v32: label kad ini ialah TAJUK kad, bukan nota kecil - pengguna meminta ia
+   lebih besar dan tebal ("Kemajuan anda 字体大点，bold"). 13px -> 15px/700;
+   ia masih kelabu supaya tidak bersaing dengan "x / 47 minggu" di sebelahnya. */
+.progress-label { font-size: 15px; font-weight: 700; }
+
 .bar { height: 9px; background: #e3eaf2; border-radius: 99px; overflow: hidden; }
 
 .bar-fill {
@@ -425,14 +430,19 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 .week-chip.done { background: var(--green); color: #fff; }
 .week-chip.miss { background: var(--red-soft); color: var(--red); }
 .week-chip.cuti { background: #f0f0f0; color: #c2c8d0; }
-.week-chip.now  { outline: 3px solid var(--ring-now); outline-offset: 1px; }
+/* .week-chip.now tiada peraturan di sini lagi: "minggu semasa" kini dibawa oleh
+   WARNA LATAR, di bawah sekali bersama .sel (v31). */
 
 /* v29: minggu 1..minggu semasa boleh DIKLIK - ia menggantikan butang
    "Pilih minggu lain…" dan <select>nya. Tanda boleh-klik mesti kelihatan pada
-   telefon, di mana tiada kursor: hover sahaja tidak cukup, jadi cincin focus
-   dan saiz ketukan 27px itu yang membawa maksudnya. */
+   telefon, di mana tiada kursor: saiz ketukan 27px dan sisi kekunci itu yang
+   membawa maksudnya.
+   v31: hover TIDAK lagi memakai cincin (pengguna: "不要掉圈圈") - ia menukar
+   kecerahan sahaja. Focus-visible KEKAL bercincin: ia satu-satunya petunjuk
+   untuk pengguna papan kekunci, dan ia hanya muncul selepas Tab, tidak pernah
+   pada sentuhan. */
 .week-chip.pilih { cursor: pointer; }
-.week-chip.pilih:hover,
+.week-chip.pilih:hover { filter: brightness(.95); }
 .week-chip.pilih:focus-visible {
   outline: 3px solid var(--blue);
   outline-offset: 1px;
@@ -471,15 +481,33 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   .week-chip.pilih { transition: none; }
 }
 
-/* Minggu yang sedang dipilih. Menggantikan cincin .now (bukan ditambah di
-   atasnya - dua cincin pada satu chip nampak seperti pepijat), kerana selepas
-   guru mengklik minggu lama, cincin itu mesti berada pada minggu ITU.
-   Warna: cincin CERAH (--ring-sel), atas permintaan pengguna
-   ("这2个圈换成浅色") - versi gelapnya menenggelamkan nombor minggu. */
+/* v31: TIADA CINCIN LAGI. Pengguna: "不要掉圈圈。换成不一样色来代表。"
+   Dua keadaan itu kini dibawa oleh WARNA LATAR:
+     - .sel  = biru pekat + teks putih : minggu yang sedang dihantar/dikemas kini
+     - .now  = biru muda  + teks biru  : minggu semasa (hanya bila ia bukan .sel)
+
+   Peraturan ini diletakkan SELEPAS warna status (.done/.miss/.cuti) dengan
+   sengaja: pada dua chip itu warna status DIGANTIKAN, jadi "saya di sini"
+   menang atas warna status. Statusnya tidak hilang - tooltip chip, kiraan
+   "x / 47 minggu", dan kad "sudah dihantar" apabila minggu itu dipilih
+   semuanya menyebutnya.
+
+   Bila minggu semasa = minggu yang dipilih (kes biasa), hanya .sel kelihatan:
+   satu chip, satu warna, tiada dua tanda bertindih. */
 .week-chip.sel,
 .week-chip.pilih.sel {
-  outline: 3px solid var(--ring-sel);
-  outline-offset: 2px;
+  background: var(--blue);
+  color: #fff;
+  /* Pemilih 3-kelas ini perlu: .week-chip.miss.pilih juga 3 kelas dan datang
+     lebih awal, jadi menulis `--chip-edge` pada .week-chip.sel sahaja akan
+     kalah dan sisi kekunci itu kekal merah jambu di bawah chip biru. */
+  --chip-edge: var(--blue-dark);
+}
+
+.week-chip.now:not(.sel) {
+  background: var(--semasa);
+  color: var(--semasa-teks);
+  --chip-edge: var(--semasa-sisi);
 }
 
 .legend {
