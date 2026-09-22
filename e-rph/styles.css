@@ -17,6 +17,13 @@
   --line: #dde5ee;
   --bg: #eef2f7;
   --radius: 16px;
+  /* Cincin pada peta kemajuan. Sengaja CERAH: chip minggu sudah berwarna
+     (hijau / merah jambu / kelabu), jadi cincin biru gelap mengalahkan
+     nombor minggu itu sendiri. `--ring-sel` satu langkah lebih kuat daripada
+     `--ring-now` supaya "minggu semasa" dan "minggu yang sedang dipilih"
+     masih boleh dibezakan. */
+  --ring-now: #a8c8e8;
+  --ring-sel: #78a8d8;
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -418,7 +425,7 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 .week-chip.done { background: var(--green); color: #fff; }
 .week-chip.miss { background: var(--red-soft); color: var(--red); }
 .week-chip.cuti { background: #f0f0f0; color: #c2c8d0; }
-.week-chip.now  { outline: 3px solid var(--blue); outline-offset: 1px; }
+.week-chip.now  { outline: 3px solid var(--ring-now); outline-offset: 1px; }
 
 /* v29: minggu 1..minggu semasa boleh DIKLIK - ia menggantikan butang
    "Pilih minggu lain…" dan <select>nya. Tanda boleh-klik mesti kelihatan pada
@@ -466,10 +473,12 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 /* Minggu yang sedang dipilih. Menggantikan cincin .now (bukan ditambah di
    atasnya - dua cincin pada satu chip nampak seperti pepijat), kerana selepas
-   guru mengklik minggu lama, cincin itu mesti berada pada minggu ITU. */
+   guru mengklik minggu lama, cincin itu mesti berada pada minggu ITU.
+   Warna: cincin CERAH (--ring-sel), atas permintaan pengguna
+   ("这2个圈换成浅色") - versi gelapnya menenggelamkan nombor minggu. */
 .week-chip.sel,
 .week-chip.pilih.sel {
-  outline: 3px solid var(--blue-dark);
+  outline: 3px solid var(--ring-sel);
   outline-offset: 2px;
 }
 
