@@ -192,9 +192,6 @@ var el = {
   fileName: $('file-name'),
   fileClear: $('file-clear'),
   url: $('url'),          /* hidden: membawa pautan rekod sedia ada semasa kemas kini */
-  btnOther: $('btn-other'),
-  otherWrap: $('other-wrap'),
-  otherWeek: $('other-week'),
   summary: $('summary'),
   btnSubmit: $('btn-submit'),
   msg: $('msg'),
@@ -439,7 +436,6 @@ function refreshMe() {
 function renderSend() {
   renderBanner();
   renderSubjects();
-  renderOtherWeeks();
   renderAlready();
   renderFile();          /* mesti di sini juga: ia bergantung pada state.file
                             dan state.linkLama, yang berubah mengikut minggu */
@@ -587,6 +583,11 @@ function renderSubjects() {
 }
 
 /* --- 10c. Pilih minggu ---
+   v29: pemilihnya ialah PETA KEMAJUAN sendiri. Butang "Pilih minggu lain…" dan
+   <select>nya dibuang atas permintaan pengguna ("不要掉 Pilih minggu lain…
+   。改成直接点击下面的第几个星期"). Yang tinggal di sini: minggu mana yang
+   boleh diklik, apa statusnya, dan apa yang berlaku apabila ia diklik.
+
    SENARAI INI MESTI MENGANDUNGI SETIAP MINGGU 1..minggu semasa, termasuk yang
    SUDAH dihantar. Versi lama hanya menyenaraikan minggu yang BELUM dihantar
    (dan hanya 6 minggu ke belakang), jadi guru tidak dapat memilih semula
@@ -594,7 +595,8 @@ function renderSubjects() {
    atau dipadam sama sekali, dan selepas berpindah ke minggu lain mereka tidak
    boleh kembali ke minggu semasa. Itu bug yang dilaporkan 16 Sep 2026
    ("let teachers modify and delete any eRPH - sekarang还不能").
-   Status ditulis pada setiap pilihan supaya guru tahu apa yang akan dilihat. */
+   Status dipaparkan pada tooltip setiap minggu, sama seperti label pada
+   <option> dahulu. */
 function selectableWeeks() {
   var out = [];
   for (var w = state.currentWeek; w >= 1; w--) out.push(w);
@@ -607,18 +609,29 @@ function weekStatusText(w) {
   return state.weeks.indexOf(w) !== -1 ? 'sudah dihantar ✓' : 'belum dihantar';
 }
 
-function renderOtherWeeks() {
-  var opts = selectableWeeks();
+/* Bertukar kepada minggu yang diklik - sama seperti <select> dahulu: subjek dan
+   fail direset, kemudian refreshMe() memuatkan semula rekod minggu itu.
+   Minggu yang SAMA tidak melakukan apa-apa, kerana <select> dahulu hanya
+   memicu 'change' - mengklik ulang minggu semasa tidak boleh memanggil pelayan. */
+function pilihMinggu(w) {
+  if (w === state.targetWeek) return;
+  state.targetWeek = w;
+  state.mode = 'new';
+  resetSubject();
+  resetFile();
+  setMsg('');
+  refreshMe();
+}
 
-  el.btnOther.classList.remove('hidden');
-  el.otherWeek.innerHTML = '';
-  opts.forEach(function (w) {
-    var o = document.createElement('option');
-    o.value = w;
-    o.textContent = weekLabel(w) + ' — ' + weekStatusText(w);
-    if (w === state.targetWeek) o.selected = true;
-    el.otherWeek.appendChild(o);
-  });
+/* Satu pengeklik bagi SETIAP minggu, dijana oleh kilang ini. Kalau pengeklik
+   yang sama dipasang dalam gelung dengan `var w`, setiap chip akan membaca
+   nilai w yang TERAKHIR - klik mana-mana minggu akan membuka minggu 47. */
+function klikMinggu(w) {
+  return function (ev) {
+    if (ev && ev.type === 'keydown' &&
+        !(ev.key === 'Enter' || ev.key === ' ' || ev.key === 'Spacebar')) return;
+    pilihMinggu(w);
+  };
 }
 
 /* --- 10d. Sudah hantar? --- */
@@ -798,6 +811,7 @@ function renderProgress() {
 
   el.weeks.innerHTML = '';
   var frag = document.createDocumentFragment();
+  var bolehPilih = selectableWeeks();
 
   for (var w = 1; w <= CONFIG.TOTAL_WEEKS; w++) {
     var chip = document.createElement('div');
@@ -818,6 +832,24 @@ function renderProgress() {
     }
 
     if (w === state.currentWeek) chip.classList.add('now');
+
+    /* v29: minggu itu SENDIRI yang menjadi pemilih - menggantikan butang
+       "Pilih minggu lain…". Hanya minggu 1..minggu semasa boleh diklik; minggu
+       yang belum berlaku kekal sebagai paparan sahaja. */
+    if (bolehPilih.indexOf(w) !== -1) {
+      chip.classList.add('pilih');
+      chip.title += ' · ' + weekStatusText(w) + ' — klik untuk pilih';
+      chip.setAttribute('role', 'button');
+      chip.setAttribute('tabindex', '0');
+      chip.addEventListener('click', klikMinggu(w));
+      chip.addEventListener('keydown', klikMinggu(w));
+    }
+
+    /* Minggu yang sedang dihantar/dikemas kini. Selalunya sama dengan .now,
+       tetapi TIDAK semestinya: selepas guru mengklik minggu lama, cincin itu
+       mesti berpindah ke minggu itu. */
+    if (w === state.targetWeek) chip.classList.add('sel');
+
     frag.appendChild(chip);
   }
 
@@ -982,20 +1014,9 @@ el.fileClear.addEventListener('click', function () {
   renderSummary();
 });
 
-el.btnOther.addEventListener('click', function () {
-  var opening = el.otherWrap.classList.contains('hidden');
-  el.otherWrap.classList.toggle('hidden', !opening);
-  if (opening) el.otherWeek.focus();
-});
-
-el.otherWeek.addEventListener('change', function () {
-  state.targetWeek = Number(el.otherWeek.value) || state.currentWeek;
-  state.mode = 'new';
-  resetSubject();
-  resetFile();
-  setMsg('');
-  refreshMe();
-});
+/* v29: pendengar #btn-other / #other-week dibuang bersama kawalan itu. Setiap
+   chip minggu memasang pengekliknya sendiri dalam renderProgress(), jadi tiada
+   pendengar global yang tinggal untuk dijaga di sini. */
 
 el.btnAgain.addEventListener('click', function () {
   resetSubject();

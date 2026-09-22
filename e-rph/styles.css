@@ -393,6 +393,8 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   transition: width .45s ease;
 }
 
+.week-hint { margin: 9px 0 0; }
+
 .weeks {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(27px, 1fr));
@@ -417,6 +419,26 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 .week-chip.miss { background: var(--red-soft); color: var(--red); }
 .week-chip.cuti { background: #f0f0f0; color: #c2c8d0; }
 .week-chip.now  { outline: 3px solid var(--blue); outline-offset: 1px; }
+
+/* v29: minggu 1..minggu semasa boleh DIKLIK - ia menggantikan butang
+   "Pilih minggu lain…" dan <select>nya. Tanda boleh-klik mesti kelihatan pada
+   telefon, di mana tiada kursor: hover sahaja tidak cukup, jadi cincin focus
+   dan saiz ketukan 27px itu yang membawa maksudnya. */
+.week-chip.pilih { cursor: pointer; }
+.week-chip.pilih:hover,
+.week-chip.pilih:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 1px;
+}
+
+/* Minggu yang sedang dipilih. Menggantikan cincin .now (bukan ditambah di
+   atasnya - dua cincin pada satu chip nampak seperti pepijat), kerana selepas
+   guru mengklik minggu lama, cincin itu mesti berada pada minggu ITU. */
+.week-chip.sel,
+.week-chip.pilih.sel {
+  outline: 3px solid var(--blue-dark);
+  outline-offset: 2px;
+}
 
 .legend {
   display: flex;
@@ -869,7 +891,7 @@ body {
   color: var(--blue);
 }
 
-/* --- Pautan-butang kecil (Bukan anda?, Pilih minggu lain…, KEMBALI) ----- */
+/* --- Pautan-butang kecil (Bukan anda?, Buang, KEMBALI) ------------------- */
 
 .link-btn {
   transition: background .18s ease, color .18s ease, box-shadow .24s ease;

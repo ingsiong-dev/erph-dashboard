@@ -187,14 +187,9 @@
            memadamkan pautan asal. -->
       <input id="url" type="hidden">
 
-      <div class="other-week">
-        <button class="link-btn" id="btn-other" type="button">Pilih minggu lain…</button>
-        <div id="other-wrap" class="hidden">
-          <label for="other-week">Pilih minggu — termasuk minggu yang sudah dihantar,
-            untuk dikemas kini atau dipadam</label>
-          <select id="other-week"></select>
-        </div>
-      </div>
+      <!-- v29: kawalan "Pilih minggu lain…" DIBUANG. Pemilihnya kini ialah peta
+           kemajuan di bawah - klik nombor minggu itu sendiri. Permintaan
+           pengguna: "不要掉 Pilih minggu lain… 。改成直接点击下面的第几个星期". -->
 
       <!-- Ringkasan sebelum hantar -->
       <div class="summary" id="summary"></div>
@@ -208,6 +203,9 @@
         <span class="muted small">Kemajuan anda</span>
         <strong id="prog-text">—</strong>
       </div>
+      <p class="week-hint muted small" id="week-hint">Klik nombor minggu di bawah
+        untuk pilih minggu itu — termasuk minggu yang sudah dihantar, untuk
+        dikemas kini.</p>
       <div class="weeks" id="weeks"></div>
       <div class="legend">
         <span><i class="dot done"></i>Selesai</span>
@@ -342,7 +340,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: 'da04cf0',
+  build: '5087d97',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
