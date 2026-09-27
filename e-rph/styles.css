@@ -629,12 +629,10 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   .lap-controls { grid-template-columns: 1fr; }
 }
 
-/* Lajur kanan: Tahun di atas, Cetak Laporan di bawahnya - DUA kawalan SAIZ SAMA.
-   Sebelum ini kotak Tahun memakai gaya medan penuh (padding 14px, font 16px,
-   tinggi ~57px), dan itu terlalu besar untuk empat angka; butang Cetak Laporan
-   pula selebar halaman. Kedua-duanya kini berkongsi satu tinggi (42px) dan satu
-   lebar (lajur ini). Dua kawalan bertindan yang tidak sama saiz kelihatan seperti
-   pepijat susun atur, jadi saiznya dikunci di sini dan bukan diwarisi. */
+/* Lajur kanan: kotak Tahun SAHAJA sejak v33 (butang Cetak Laporan dibuang).
+   Tinggi 42px dikunci di sini dan bukan diwarisi: kotak Tahun pernah memakai
+   gaya medan penuh (padding 14px, font 16px, tinggi ~57px) - terlalu besar
+   untuk empat angka, dan ia bersebelahan nama guru dalam grid dua lajur. */
 .lap-tahun-col { display: flex; flex-direction: column; gap: 7px; }
 .lap-tahun-col label { margin: 0; }
 
@@ -643,19 +641,6 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   padding: 0 10px;
   font-size: 14px;
   border-width: 1.5px;
-  border-radius: 10px;
-}
-
-#btn-cetak {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 42px;
-  padding: 0 6px;
-  margin: 0;
-  font-size: 12.5px;
-  line-height: 1.1;
-  text-align: center;
   border-radius: 10px;
 }
 
@@ -827,7 +812,8 @@ input.good { border-color: var(--green); background: var(--green-soft); }
    Permintaan pengguna: "那3个按键是上下收窄。刚才的长度没问题。" - the v25 attempt
    narrowed them SIDEWAYS, which was the wrong axis. The width was fine, so the
    cap is gone and the height is reduced instead, to 42px: the same height as the
-   Laporan page's Tahun box and Cetak Laporan button (v24), so both pages agree.
+   Laporan page's Tahun box (v24), so both pages agree. (That box shared the
+   height with the Cetak Laporan button until v33 removed the button.)
 
    font-size pada #subject KEKAL 16px. Di bawah 16px Safari iOS mengezum halaman
    apabila medan difokus - itu sebab `input, select` memakai 16px sejak awal.
