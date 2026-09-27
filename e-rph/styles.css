@@ -569,30 +569,25 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .foot {
   text-align: center;
-  font-size: 12px;
+  font-size: 11.5px;
   color: var(--muted);
   padding: 6px 16px 30px;
 }
 
-/* Versi build, diisi oleh app.js daripada CONFIG.VERSI. Diletakkan pada barisnya
-   sendiri dan lebih pudar daripada teks footer: ia untuk pentadbir yang perlu
-   tahu build mana yang sampai kepada guru, bukan untuk guru baca. */
-.foot-versi {
+/* v32: SATU baris sahaja (sebelum ini tiga). Semua bahagian berkongsi satu saiz
+   dan satu berat - pengguna: "缩小进一行。名字不用bold". `font-weight: 400`
+   ditulis EXPLISIT supaya berat yang diwarisi tidak boleh menjadikan nama itu
+   tebal tanpa disedari. */
+.foot-line {
   display: block;
-  margin-top: 3px;
-  font-size: 11px;
-  opacity: .75;
-  font-variant-numeric: tabular-nums;
+  font-weight: 400;
+  opacity: .8;
 }
 
-/* Kredit pembangun - baris paling bawah sekali. Lebih pudar daripada baris
-   utama footer: ia kredit, bukan maklumat yang guru perlukan. */
-.foot-dev {
-  display: block;
-  margin-top: 2px;
-  font-size: 11px;
-  opacity: .7;
-}
+/* Nombor versi: satu-satunya bahagian footer yang datang daripada CONFIG.VERSI
+   (slot markup sengaja kosong, supaya nombor itu hidup di satu tempat). Digit
+   malar-lebar supaya lebar baris tidak bergetar antara v2.9 dan v2.31. */
+.foot-versi { font-variant-numeric: tabular-nums; }
 
 @media (max-width: 380px) {
   .card { padding: 18px 15px; }
