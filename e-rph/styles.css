@@ -585,6 +585,15 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   font-variant-numeric: tabular-nums;
 }
 
+/* Kredit pembangun - baris paling bawah sekali. Lebih pudar daripada baris
+   utama footer: ia kredit, bukan maklumat yang guru perlukan. */
+.foot-dev {
+  display: block;
+  margin-top: 2px;
+  font-size: 11px;
+  opacity: .7;
+}
+
 @media (max-width: 380px) {
   .card { padding: 18px 15px; }
   h2.big { font-size: 19px; }
