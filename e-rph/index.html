@@ -273,6 +273,26 @@
             <!-- Nama sahaja - tiada senarai pilihan. Setiap guru hanya melihat
                  laporannya sendiri, jadi tiada apa-apa untuk dipilih. -->
             <p class="lap-guru-nama" id="lap-guru-nama">—</p>
+
+            <!-- RUANG DI BAWAH NAMA GURU, kini butang REKOD SEMAKAN RPH (29 Sep
+                 2026). Permintaan pengguna: "把这个做成一个按键在老师名字下面的空位
+                 ...方便老师点击查看" - tempat ini kosong sejak butang Cetak Laporan
+                 dibuang dalam v33, dan dokumen sekolah itu memang untuk guru buka
+                 sendiri (bilangan minggu disemak, minggu mana belum).
+
+                 TIGA PERKARA yang pernah menjadi pepijat sebenar, dan semuanya
+                 dikunci dalam ujian (test-client-app.mjs §W):
+                   1. target="_blank", BUKAN "_top" - halaman ini berjalan di dalam
+                      iframe sandbox Apps Script, jadi "_top" akan menavigasi guru
+                      KELUAR dari app dan borangnya hilang;
+                   2. rel="noopener" - pautan luar tidak boleh menyentuh tab kita;
+                   3. href TANPA segmen "/u/0/" - segmen itu mengunci dokumen kepada
+                      akaun Google slot 0 pelayar, yang pada telefon selalunya Gmail
+                      peribadi (ini punca masalah v19-v21 pada pautan Looker).
+                 Dipaparkan sebagai /view: guru membacanya, bukan menyunting rekod. -->
+            <a class="btn ghost lap-semakan" id="lap-semakan"
+               href="https://docs.google.com/document/d/1QxIlDaLTMoLJ4KsFOEkm9O-HPoUqfxQK6wo1pk5jzpY/view"
+               target="_blank" rel="noopener">REKOD SEMAKAN RPH</a>
           </div>
           <div class="lap-tahun-col">
             <label for="lap-tahun">Tahun</label>
@@ -357,9 +377,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.39',
+  versi: 'v2.40',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'e07dc6e',
+  build: 'b7dadd9',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never

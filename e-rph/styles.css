@@ -835,6 +835,28 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   color: var(--ink, #1d2b3a);
 }
 
+/* Butang REKOD SEMAKAN RPH: pautan keluar ke dokumen sekolah, diletakkan di
+   ruang kosong bawah nama guru (29 Sep 2026). Ia <a>, bukan <button>, jadi ia
+   perlu menyatakan display dan text-decoration sendiri - dan tingginya
+   dipadankan dengan kotak Tahun di sebelahnya (42px), sama seperti nama guru
+   dipadankan dengan kotak itu.
+   Selector bertindih .btn.ghost dengan sengaja: peraturan .btn.ghost (padding
+   13px, font 16px, margin-top 14px) adalah LEBIH KHUSUS daripada satu kelas,
+   jadi satu kelas sahaja akan diam-diam kalah. */
+.btn.ghost.lap-semakan {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 42px;
+  padding: 0 13px;
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .3px;
+  text-decoration: none;
+  text-align: center;
+}
+
 /* ---------- Padam rekod pada Laporan e-RPH ----------
    Tong sampah pada setiap baris MILIK SENDIRI sahaja. Pengesahan dua langkah
    (klik pertama menyalakan butang, klik kedua memadam) - tiada confirm(),
