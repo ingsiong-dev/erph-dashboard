@@ -330,14 +330,41 @@ function lapResetDelete() {
    sendiri mesti menyatakan apa yang dijangka daripada klik seterusnya. */
 var LAP_DEL_CONFIRM = 'Padam?';
 
+/* v36: keadaan KETIGA - sementara permintaan padam berjalan. Permintaan
+   pengguna: "按了Padam？不要再显示那个垃圾桶了。变成Deleting...".
+   Ikon tong sampah yang kembali serta-merta (walaupun butang sudah dilumpuhkan)
+   kelihatan seperti "tidak jadi" - jadi guru menekan lagi. Teks ini kekal
+   sehingga baris itu hilang, atau dipulihkan kepada ikon kalau padam GAGAL. */
+var LAP_DEL_BUSY = 'Deleting…';
+
 function lapArm(minggu, on) {
   var btn = LAP.delBtns[minggu];
   if (!btn) return;
 
   btn.classList.toggle('armed', !!on);
+  /* Keluar dari keadaan "Deleting…" masuk kembali ke ikon atau ke "Padam?". */
+  btn.classList.remove('busy');
   btn.innerHTML = on ? LAP_DEL_CONFIRM : LAP_TRASH_SVG;
   btn.setAttribute('title', on ? 'Klik sekali lagi untuk padam rekod minggu ini'
                                : 'Padam rekod minggu ini');
+}
+
+/* Butang bertukar kepada teks "Deleting…" sebaik permintaan padam dihantar.
+   TEKS, bukan tong sampah: guru yang menekan dan melihat ikon yang sama semula
+   akan menekan lagi. */
+function lapBusy(minggu) {
+  var btn = LAP.delBtns[minggu];
+  if (!btn) return;
+
+  btn.classList.remove('armed');
+  btn.classList.add('busy');
+  /* innerHTML, sama seperti lapArm(): di situlah ikon tong sampah hidup, jadi
+     inilah satu-satunya cara membuktikan ikon itu SUDAH TIADA (ujian membaca
+     innerHTML - textContent dan innerHTML ialah dua sifat berasingan dalam
+     harness, manakala dalam DOM sebenar menulis textContent juga mengosongkan
+     innerHTML). */
+  btn.innerHTML = LAP_DEL_BUSY;
+  btn.setAttribute('title', 'Sedang memadam rekod minggu ini…');
 }
 
 function lapDisableAll(yes) {
@@ -405,7 +432,9 @@ function lapDeleteClick(minggu) {
 function lapDoDelete(minggu) {
   LAP.deleting = true;
   LAP.armedWeek = null;
-  lapArm(minggu, false);
+  /* v36: teks "Deleting…" menggantikan ikon tong sampah semasa permintaan
+     berjalan (dahulunya lapArm(minggu, false) - ikon kembali serta-merta). */
+  lapBusy(minggu);
   lapDisableAll(true);
   lapHint('Memadam ' + weekLabel(minggu) + '…');
 
@@ -429,6 +458,10 @@ function lapDoDelete(minggu) {
       lapLoadGuru();
     })
     .catch(function (err) {
+      /* Padam GAGAL: butang mesti kembali kepada ikon tong sampah. Kalau ia
+         kekal "Deleting…" yang dilumpuhkan, guru terperangkap - tiada cara
+         mencuba semula selain memuatkan semula halaman. */
+      lapArm(minggu, false);
       lapHint('Gagal memadam: ' + err.message, 'bad');
     })
     .then(function () {

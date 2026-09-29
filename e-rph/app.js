@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.35'
+  VERSI: 'v2.36'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -197,6 +197,7 @@ var el = {
   msg: $('msg'),
   progText: $('prog-text'),
   weeks: $('weeks'),
+  weekLoading: $('week-loading'),
   scrDone: $('scr-done'),
   doneDetail: $('done-detail'),
   doneLink: $('done-link'),
@@ -410,14 +411,23 @@ function selectTeacher(name) {
 function refreshMe() {
   if (!state.teacher) return;
 
+  /* v36: setiap permintaan membawa nombor urutannya sendiri. Guru yang menekan
+     dua minggu berturut-turut dengan pantas menghantar dua permintaan apiMe;
+     tanpa pengawal ini jawapan LAMA boleh tiba kemudian dan menulis rekod
+     minggu lama ke atas minggu yang baru dipilih - guru nampak RPH minggu yang
+     salah. Respons basi hanya diabaikan; yang terbaharu sentiasa menang. */
+  var seq = ++_meSeq;
+
   withTimeout(serverCall('apiMe', [state.targetWeek]), SLOW_SERVER_MS, SLOW_SERVER_MSG)
     .then(function (data) {
+      if (seq !== _meSeq) return;
       state.weeks = (data && data.weeks) || [];
       state.mySubjects = (data && data.subjects) || [];
       state.record = (data && data.record) || null;
       renderSend();
     })
     .catch(function (err) {
+      if (seq !== _meSeq) return;
       state.weeks = [];
       state.mySubjects = [];
       state.record = null;
@@ -425,6 +435,9 @@ function refreshMe() {
       setMsg('Amaran: kemajuan tidak dapat dimuatkan (' + err.message + ')', 'bad');
     });
 }
+
+/* Nombor urutan permintaan apiMe yang terakhir dihantar (lihat refreshMe()). */
+var _meSeq = 0;
 
 /* v28: butang UBAH SUAI pada halaman Laporan DIBUANG.
    Pengguna: *"感觉修改键很多余。有错误叫老师删掉重新上载就可以了。"*
@@ -434,6 +447,10 @@ function refreshMe() {
    PADAM di halaman Laporan e-RPH, kemudian muat naik semula. */
 
 function renderSend() {
+  /* v36: permintaan apiMe sudah selesai (berjaya ATAU gagal), jadi baris
+     "Loading…" di bawah peta minggu mesti padam di SINI - ini satu-satunya
+     tempat yang dilalui kedua-dua jalan itu. */
+  setMingguLoading(false);
   renderBanner();
   renderSubjects();
   renderAlready();
@@ -609,6 +626,31 @@ function weekStatusText(w) {
   return state.weeks.indexOf(w) !== -1 ? 'Sudah dihantar ✓' : 'Belum dihantar';
 }
 
+/* v36: maklum balas SERTA-MERTA apabila guru menekan bebola minggu.
+   Sebelum ini cincin .sel hanya berpindah selepas pelayan menjawab (~1 saat),
+   jadi guru yang tidak nampak apa-apa berlaku menekan lagi - kadang-kadang pada
+   minggu yang BERLAINAN, dan dua permintaan apiMe berlumba. Permintaan pengguna:
+   "按了 minggu 的按钮，左下角显示 Loading... 避免老师一位没按到，按多次".
+   Baris ini di bawah peta minggu (bawah-kiri kad), betul-betul di tempat mata
+   guru berada ketika dia menekan. */
+function setMingguLoading(on) {
+  if (el.weekLoading) el.weekLoading.classList.toggle('hidden', !on);
+}
+
+/* Pindahkan cincin .sel SERTA-MERTA, tanpa menunggu pelayan dan tanpa melukis
+   semula peta: membina semula chip semasa jari masih menekan akan membuang
+   keadaan .tekan yang sedang dipaparkan. */
+function tandakanMinggu(w) {
+  var anak = el.weeks.children || [];
+  for (var i = 0; i < anak.length; i++) {
+    var chip = anak[i];
+    if (!chip || !chip.classList) continue;
+    var minggu = chip.dataset && chip.dataset.minggu;
+    if (minggu === undefined || minggu === null) continue;
+    chip.classList.toggle('sel', String(minggu) === String(w));
+  }
+}
+
 /* Bertukar kepada minggu yang diklik - sama seperti <select> dahulu: subjek dan
    fail direset, kemudian refreshMe() memuatkan semula rekod minggu itu.
    Minggu yang SAMA tidak melakukan apa-apa, kerana <select> dahulu hanya
@@ -620,6 +662,11 @@ function pilihMinggu(w) {
   resetSubject();
   resetFile();
   setMsg('');
+  /* v36: dua tanda serta-merta - "Loading…" di bawah peta, dan cincin pada
+     minggu yang ditekan. Kedua-duanya hilang/dikonfirmasi oleh renderSend()
+     apabila jawapan pelayan tiba. */
+  setMingguLoading(true);
+  tandakanMinggu(w);
   refreshMe();
 }
 
@@ -820,6 +867,10 @@ function renderProgress() {
     var chip = document.createElement('div');
     chip.className = 'week-chip';
     chip.textContent = w;
+    /* v36: nombor minggu pada nod itu sendiri. tandakanMinggu() memindahkan
+       cincin .sel serta-merta selepas klik dengan membacanya - tanpa ini ia
+       terpaksa meneka daripada textContent. */
+    chip.dataset.minggu = String(w);
 
     if (isHoliday(w)) {
       chip.classList.add('cuti');

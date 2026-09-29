@@ -864,6 +864,20 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 }
 .lap-del:disabled { opacity: .45; cursor: default; }
 
+/* v36: keadaan "sedang memadam". Sama ukuran dengan .armed (yang membawa teks
+   "Padam?") supaya baris tidak melompat apabila butang bertukar daripada ikon
+   kepada teks - dan TEKS, bukan tong sampah, kerana ikon yang kembali
+   kelihatan seperti klik itu tidak jadi. */
+.lap-del.busy {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 6px 9px;
+  white-space: nowrap;
+  color: var(--muted);
+  background: var(--bg);
+  border-color: var(--line);
+}
+
 /* Guru lain: tiada butang, hanya nota kecil supaya lajur tidak kelihatan rosak. */
 .lap-del-none { color: #c3cbd6; font-size: 13px; }
 
