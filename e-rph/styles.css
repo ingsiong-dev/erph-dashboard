@@ -573,6 +573,13 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 }
 
 .legend span { display: flex; align-items: center; gap: 6px; }
+
+/* v38: baris "Loading…" yang muncul selepas menekan bebola minggu berada di
+   HUJUNG KANAN baris ini - iaitu sudut bawah-kanan kad kemajuan. Pengguna:
+   "放右下角". Ia anak terakhir .legend; margin-left:auto menolaknya ke tepi
+   kanan dalam baris flex, dan .legend boleh wrap supaya pada skrin sempit ia
+   turun ke barisnya sendiri dan masih berada di kanan. */
+#week-loading { margin-left: auto; }
 /* v34: petunjuk ini BULAT, sama seperti chip di atasnya - segi empat kecil di
    sebelah bebola kelihatan seperti peninggalan reka bentuk lama. */
 .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
