@@ -177,7 +177,7 @@ var PORTAL = {
      failure text looks identical - this stamp is the only way to tell which build
      a device actually has. BUMP IT (p<major>.<minor>-<date>) ON EVERY EDIT, or it
      stops identifying anything. */
-  build: 'p1.4-2026-09-17',
+  build: 'p1.5-2026-09-29',
   token: null
 };
 
@@ -306,18 +306,34 @@ function __startApp(token) {
 /* The token lives in localStorage so it survives a NEW TAB - a link tapped in
    WhatsApp or Telegram opens one, and sessionStorage would be empty there. The
    nonce/state stay session-scoped on purpose: they belong to one attempt, and
-   sharing them across tabs would break a parallel sign-in. */
+   sharing them across tabs would break a parallel sign-in.
+
+   TWO credentials, deliberately:
+     portal-token : the Google ID token from a fresh sign-in. Lives 1 HOUR.
+     portal-sesi  : a durable key minted by the backend (action 'sesi') after that
+                    sign-in succeeds. NO EXPIRY - this is what makes "log in once"
+                    true, because closing the browser no longer ends anything.
+   Each app mints its own key: e-RPH's key is stored in the TEACHER app's script
+   properties, so it is meaningless here (and vice versa). */
 function __accept(token) {
   PORTAL.token = token;
   __lsSet('portal-token', token);
   __setStatus('Mengesahkan akaun\u2026', true);
 
   __verify(token).then(function (res) {
-    if (res && res.ok) { __startApp(token); return; }
+    if (res && res.ok) {
+      if (res.callerEmail) __lsSet('portal-emel', res.callerEmail);
+      __startApp(token);
+      /* Only a Google ID token can be exchanged for the durable key. It must
+         never delay the portal that is already loading, so this is fired and
+         forgotten - the key simply takes effect from the NEXT page load. */
+      __mintSesi(token);
+      return;
+    }
     var code = (res && res.code) || 'E_LAIN';
     if (code === 'E_ROSTER') { __lupakanAkaunDitolak_(token); __showDenied(String((res && res.error) || '')); return; }
     if (code === 'E_TOKEN' || code === 'E_LOGIN') {
-      __lsDel('portal-token'); PORTAL.token = null;
+      __lsDel('portal-token'); __lsDel('portal-sesi'); PORTAL.token = null;
       __showGate('Sesi log masuk telah tamat. Ketik butang untuk log masuk semula.');
       return;
     }
@@ -327,6 +343,62 @@ function __accept(token) {
   }, function (e) {
     __showError('Tidak dapat menghubungi pelayan portal. Cuba muat semula halaman. (' + e + ')');
   });
+}
+
+/* Exchange a fresh Google ID token for the backend's durable session key.
+   A shape check, not a truthy one: an older deployment answers {ok:true} with no
+   key at all, and storing that would break the next load.
+   A failure here must NEVER affect the sign-in that already succeeded, so even the
+   logger is guarded (a sandboxed context may have no console at all). */
+function __warn(mesej, butiran) {
+  try {
+    if (typeof console !== 'undefined' && console && console.warn) console.warn(mesej, butiran);
+  } catch (e) {}
+}
+
+function __mintSesi(token) {
+  if (!token || token.indexOf('sesi_') === 0) return;   // already a session key
+  try {
+    fetch(PORTAL.exec, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'sesi', token: token })
+    }).then(function (r) { return r.json(); }).then(function (res) {
+      if (res && res.sesi && /^sesi_[0-9a-f]{32}$/.test(res.sesi)) {
+        __lsSet('portal-sesi', res.sesi);
+        if (res.email) __lsSet('portal-emel', res.email);
+      } else {
+        __warn('Portal: kunci sesi kekal tidak diterima; token 1 jam digunakan.',
+          (res && res.error) || res);
+      }
+    }, function (e) {
+      __warn('Portal: gagal mendapatkan kunci sesi kekal.', e);
+    });
+  } catch (e) {}
+}
+
+/* "Log keluar" for a shared computer (a staff-room PC, say). A plain link, so it
+   needs no UI:
+       https://ingsiong-dev.github.io/erph-dashboard/?logkeluar=1
+   The server-side key is deleted too - dropping only the browser's copy would
+   leave a usable credential behind. */
+function __logKeluar() {
+  var sesi = __lsGet('portal-sesi');
+  if (sesi) {
+    try {
+      fetch(PORTAL.exec, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify({ action: 'logKeluar', token: sesi })
+      });
+    } catch (e) {}
+  }
+  PORTAL.token = null;
+  __lsDel('portal-token');
+  __lsDel('portal-sesi');
+  __lsDel('portal-emel');
+  try { history.replaceState(null, '', location.pathname); } catch (e) {}
+  __showGate('Anda telah log keluar. Ketik butang di atas untuk log masuk semula.');
 }
 
 /* A REFUSED account must NOT be remembered.
@@ -344,6 +416,10 @@ function __accept(token) {
    both and clearing it cannot sign anyone out of anything usable. */
 function __lupakanAkaunDitolak_(token) {
   __lsDel('portal-token');
+  /* The durable key and the remembered address go too - leaving either behind
+     would resume (or silently re-sign) the same refused account forever. */
+  __lsDel('portal-sesi');
+  __lsDel('portal-emel');
   PORTAL.token = null;
   if (__lsGet('erph-token') === token) __lsDel('erph-token');
 }
@@ -415,6 +491,9 @@ function __handleOAuthReturn() {
 }
 
 function __boot() {
+  /* 0. "Log keluar" for a shared computer: .../erph-dashboard/?logkeluar=1 */
+  if (/(^|[?&])logkeluar=1(&|$)/.test(location.search || '')) { __logKeluar(); return; }
+
   /* 1. finish a returning sign-in. ALWAYS first: __wireGoogleButton() (at the
         tail of this script) replaces the stored nonce/state, so handling the
         return after it would reject the very login Google just completed. */
@@ -425,6 +504,7 @@ function __boot() {
         silently signs the same wrong account back in. */
   if (Q.get('switch') === '1') {
     __lsDel('portal-token');
+    __lsDel('portal-sesi');
     PORTAL.token = null;
     __ssSet('portal-silent-done', '1');
     __setStatus('Pilih akaun @moe-dl.edu.my anda.');
@@ -434,22 +514,33 @@ function __boot() {
   var t = __lsGet('portal-token');
   if (t && __tokenUsable(t)) { __accept(t); return; }   // 3. still signed in
 
+  /* 3b. THE DURABLE KEY - "log in once, forever". No expiry and no Google round
+         trip, so this is what a returning teacher hits after closing the browser.
+         __accept() still verifies it with the backend (whoami) before the portal
+         is loaded, so a revoked key shows the gate instead of an empty frame;
+         note the e-RPH key CANNOT be reused here - each app stores its own. */
+  var sesi = __lsGet('portal-sesi');
+  if (sesi && /^sesi_[0-9a-f]{32}$/.test(sesi)) { __accept(sesi); return; }
+  if (sesi) __lsDel('portal-sesi');   // corrupt value: never send it to the server
+
   /* 4. the device signed in before, so ask Google silently for a new token.
         Read the dead token's EMAIL first: that is the login_hint, and on a phone
         with several Google accounts it is the only thing that makes the silent
         hop land on the right one. */
-  var hint = null;
+  var hint = __lsGet('portal-emel');
   if (t) {
     var c = __decodeJwt(t);
     if (c && c.email) hint = c.email;
     __lsDel('portal-token');
   }
-  if (t) { __trySilent(hint); return; }
+  if (t || hint) { __trySilent(hint); return; }
 
   /* 5. never signed in on THIS browser - but the e-RPH app is on the SAME origin
         with the SAME Google client and the SAME roster, so a teacher who has
         already signed in there is let straight through. Only consulted when this
-        app has no token of its own. */
+        app has no credential of its own. (A durable e-RPH key is deliberately NOT
+        accepted: it belongs to the OTHER script's properties, so this backend
+        cannot resolve it - __tokenUsable() rejects its shape for the same reason.) */
   var shared = __lsGet('erph-token');
   if (shared && __tokenUsable(shared)) { __accept(shared); return; }
 

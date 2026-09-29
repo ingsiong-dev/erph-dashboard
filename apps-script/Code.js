@@ -53,6 +53,122 @@ const ROSTER_PROP_KEY = 'PORTAL_ROSTER_EMAILS';
 const ROSTER_PROP_MAX = 8000;   // Script properties hold 9 KB per value
 const IDENT_CACHE_PREFIX = 'PORTAL_IDENT_';
 
+// ---- SESI KEKAL ("log masuk sekali sahaja") --------------------------------
+// The Google ID token lives ONE HOUR, so a returning teacher had to be signed in
+// again silently every time - and that only works while a Google session still
+// exists in that browser. Closing the browser was therefore enough to be asked
+// for a login again.
+//
+// So the script issues its OWN key after a successful Google sign-in:
+// "sesi_" + 32 hex characters, NO EXPIRY, kept in Script Properties with the
+// address that owns it. The Pages gate stores it in localStorage and sends it as
+// `token` on every call; Google is not contacted again after the first sign-in.
+//
+// It is a bearer credential for that teacher's own records, so: it can only be
+// created by a VERIFIED Google sign-in that ALSO passes the DELIMA roster
+// (sesiBuat_), every request still re-checks the roster through
+// identitiDariToken_ (a teacher removed from DELIMA loses access at once), and
+// the gate offers a way out - open .../erph-dashboard/?logkeluar=1.
+// Revocation (owner only): Apps Script editor -> Project Settings -> Script
+// Properties -> delete keys starting with SESI_, or run sesiSenarai() to list them.
+const SESI_PREFIX = 'SESI_';
+const SESI_RE = /^sesi_[0-9a-f]{32}$/;
+// Identity cache for a session key. The roster is re-checked when this expires,
+// so a removal from DELIMA takes effect within 5 minutes instead of never.
+const SESI_IDENT_TTL = 300;
+
+/** True when `token` is one of OUR durable session keys, not a Google token. */
+function adalahSesi_(token) {
+  return SESI_RE.test(teks_(token).toLowerCase());
+}
+
+/** 32 hex characters from two UUIDs (122 random bits each). */
+function sesiRaw_() {
+  return (Utilities.getUuid() + Utilities.getUuid()).replace(/-/g, '').toLowerCase().slice(0, 32);
+}
+
+/**
+ * Mint a durable key from a VALID Google ID token.
+ *
+ * Both gates run here: the token is verified with Google (emailDariToken_), and
+ * the address must be on the DELIMA roster (dalamRoster_). A forged token
+ * therefore cannot create a session, and neither can a genuine account that is
+ * not a teacher here.
+ */
+function sesiBuat_(token) {
+  const t = teks_(token);
+  if (adalahSesi_(t)) {
+    // A session key must never be able to mint another one: that would let a
+    // single stolen key renew itself forever with no Google check at all.
+    throw ralat_('E_TOKEN', 'Kunci sesi tidak boleh mencipta kunci baharu. Log masuk semula.');
+  }
+  const disahkan = emailDariToken_(t);
+  if (!dalamRoster_(disahkan.email)) {
+    throw ralat_('E_ROSTER', 'Akaun ' + disahkan.email + ' tiada dalam senarai guru sekolah ini. ' +
+      'Log masuk dengan akaun @' + ALLOWED_DOMAIN + ' anda, atau hubungi pentadbir.');
+  }
+  const key = 'sesi_' + sesiRaw_();
+  PropertiesService.getScriptProperties().setProperty(
+    SESI_PREFIX + key,
+    JSON.stringify({ email: disahkan.email, dibuat: new Date().toISOString() })
+  );
+  return { ok: true, sesi: key, email: disahkan.email };
+}
+
+/**
+ * The address that owns a session key, or an error.
+ *
+ * The message carries "log masuk" on purpose: the Pages gate recognises a dead
+ * session from /token|log masuk|tamat tempoh/i and clears the key, so a key
+ * deleted here never locks a teacher out of the gate itself.
+ */
+function sesiEmail_(key) {
+  const k = teks_(key).toLowerCase();
+  if (!SESI_RE.test(k)) {
+    throw ralat_('E_TOKEN', 'Kunci sesi tidak sah. Log masuk semula.');
+  }
+  const raw = PropertiesService.getScriptProperties().getProperty(SESI_PREFIX + k);
+  if (!raw) {
+    throw ralat_('E_TOKEN', 'Sesi log masuk tidak dijumpai. Log masuk semula.');
+  }
+  let o = {};
+  try { o = JSON.parse(raw) || {}; } catch (e) { o = {}; }
+  const email = teks_(o.email).toLowerCase();
+  if (!email) throw ralat_('E_TOKEN', 'Sesi log masuk tidak boleh dibaca. Log masuk semula.');
+  return email;
+}
+
+/**
+ * Delete one session key ("log keluar" on the gate).
+ *
+ * Deliberately tolerant: the goal is "this key cannot be used after this", and a
+ * key that is already gone satisfies it. Throwing would show an error to a
+ * teacher who clicked the link twice.
+ */
+function sesiLupakan_(key) {
+  const k = teks_(key).toLowerCase();
+  if (SESI_RE.test(k)) {
+    PropertiesService.getScriptProperties().deleteProperty(SESI_PREFIX + k);
+  }
+  return { ok: true };
+}
+
+/**
+ * Owner diagnostic: list the durable sessions that exist.
+ * RUN FROM THE APPS SCRIPT EDITOR ONLY (read-only - Logger.log only).
+ */
+function sesiSenarai() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  const keys = Object.keys(props).filter(function (k) { return k.indexOf(SESI_PREFIX) === 0; });
+  Logger.log('%s sesi kekal disimpan.', keys.length);
+  keys.forEach(function (k) {
+    let o = {};
+    try { o = JSON.parse(props[k]) || {}; } catch (e) { o = {}; }
+    Logger.log('  %s  %s  dibuat %s', k.slice(SESI_PREFIX.length),
+      o.email || '(tiada email)', o.dibuat || '(tiada tarikh)');
+  });
+}
+
 function teks_(v) {
   return (v === null || v === undefined) ? '' : String(v).trim();
 }
@@ -231,14 +347,27 @@ function identitiDariToken_(token) {
     // cache miss - verify with Google below
   }
 
-  const disahkan = emailDariToken_(t);
+  // A DURABLE SESSION KEY is resolved locally instead of at Google: the key was
+  // minted only after a verified sign-in, so verifying it again would add a
+  // round trip to tokeninfo on every page load for no gain. The roster is still
+  // checked, below and on every cache miss, exactly like the token path.
+  let disahkan;
+  if (adalahSesi_(t)) {
+    disahkan = { email: sesiEmail_(t), baki: SESI_IDENT_TTL };
+  } else {
+    disahkan = emailDariToken_(t);
+  }
   if (!dalamRoster_(disahkan.email)) {
     throw ralat_('E_ROSTER', 'Akaun ' + disahkan.email + ' tiada dalam senarai guru sekolah ini. ' +
       'Log masuk dengan akaun @' + ALLOWED_DOMAIN + ' anda, atau hubungi pentadbir.');
   }
 
   const ident = { email: disahkan.email };
-  const baki = Math.floor(disahkan.exp - Date.now() / 1000) - 30;
+  // NEVER longer than the credential itself has left to live: a session key has
+  // no expiry of its own, so it uses its own (short) cache window.
+  const baki = disahkan.baki !== undefined
+    ? disahkan.baki
+    : Math.floor(disahkan.exp - Date.now() / 1000) - 30;
   const ttl = Math.min(300, baki);
   if (ttl > 0) {
     try { cache.put(key, JSON.stringify(ident), ttl); } catch (e) {}
@@ -297,10 +426,10 @@ function halamanLogMasuk_(kod, mesej) {
 }
 
 /**
- * POST is used by the Pages gate for ONE thing: checking a freshly issued token
- * before it is allowed to load the portal, so a teacher who signed in with the
- * wrong Google account gets a denial screen with a "tukar akaun" button instead
- * of an empty frame.
+ * POST is used by the Pages gate for three things: checking a freshly issued
+ * credential before the portal is loaded (whoami), exchanging a Google ID token
+ * for a DURABLE session key (sesi - "log masuk sekali sahaja"), and throwing that
+ * key away again (logKeluar).
  *
  * The data plane deliberately does NOT use POST: the app calls google.script.run
  * and passes the token as the first argument, which keeps ONE identity check
@@ -315,6 +444,26 @@ function doPost(e) {
   }
 
   const act = teks_(body.action);
+
+  // Handled BEFORE any identity work, deliberately: deleting your own key needs no
+  // valid session - otherwise a teacher whose key was already deleted on the
+  // server could no longer "log out", which is the one state that most needs
+  // clearing. Holding the key IS the authority to delete it.
+  if (act === 'logKeluar') {
+    return json_(sesiLupakan_(body.token));
+  }
+
+  // Minting MUST go through the same lock as everything else: sesiBuat_ verifies
+  // the Google token AND the DELIMA roster, so the error codes here are the same
+  // E_TOKEN / E_ROSTER the gate already knows how to act on.
+  if (act === 'sesi') {
+    try {
+      return json_(sesiBuat_(body.token));
+    } catch (err) {
+      return json_({ ok: false, code: kodRalat_(err), error: err.message });
+    }
+  }
+
   if (act === 'whoami') {
     try {
       const ident = identitiDariToken_(body.token);
