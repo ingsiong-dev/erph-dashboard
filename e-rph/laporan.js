@@ -33,8 +33,11 @@ var LAP = {
   email: null,
   /* Pemadaman pada halaman ini: guru hanya boleh memadam rekod MILIKNYA.
      Server tetap menolak percubaan memadam rekod orang lain (delete_ membaca
-     identiti daripada sesi, bukan daripada permintaan). */
-  armedWeek: null,
+     identiti daripada sesi, bukan daripada permintaan).
+
+     v41: `armedKey` (bukan `armedWeek`) - satu klik mengarm satu BARIS rekod,
+     iaitu satu (minggu, subjek). Lihat lapKunci(). */
+  armedKey: null,
   deleting: false,
   delBtns: {},
   flash: null
@@ -277,7 +280,10 @@ function lapRenderGuru(data) {
       tr.appendChild(tdSubjek);
       tr.appendChild(tdPautan);
       tr.appendChild(tdSemakan);
-      tr.appendChild(lapDeleteCell(r.minggu, sendiri));
+      /* v41: sel padam menerima BARIS itu, bukan minggunya - satu minggu kini
+         boleh mempunyai beberapa baris (satu bagi setiap mata pelajaran), dan
+         setiap satu mesti boleh dipadam sendiri. */
+      tr.appendChild(lapDeleteCell(r, sendiri));
       frag.appendChild(tr);
     });
 
@@ -285,9 +291,19 @@ function lapRenderGuru(data) {
   }
 
   /* Nota: jangan sembunyikan baris yang nombor minggunya tidak dapat
-     ditentukan - nyatakan bilangannya supaya tidak hilang senyap. */
-  var nota = rows.length + ' minggu direkodkan daripada ' + LAP.totalWeeks +
-             ' minggu persekolahan';
+     ditentukan - nyatakan bilangannya supaya tidak hilang senyap.
+
+     v41: dua nombor berbeza mesti disebut, dan kad skor di atas hanya memakai
+     yang PERTAMA. `data.jumlah` = MINGGU unik (kad "Bilangan minggu telah
+     dihantar" - satu minggu dikira sekali walau berapa kali dihantar);
+     `rows.length` = bilangan BARIS rekod, iaitu satu bagi setiap mata pelajaran.
+     Menulis "N minggu direkodkan" dengan N = bilangan baris akan bercanggah
+     dengan kad skor tepat di atasnya. */
+  var mingguUnik = Number(data.jumlah);
+  if (!isFinite(mingguUnik)) mingguUnik = rows.length;
+  var nota = mingguUnik + ' minggu direkodkan daripada ' + LAP.totalWeeks +
+             ' minggu persekolahan' +
+             ' · ' + rows.length + ' rekod mata pelajaran';
   var jelas = Number(data.tidakJelas) || 0;
   if (jelas) {
     nota += ' · ' + jelas + ' baris mempunyai nombor minggu yang tidak dapat ' +
@@ -308,9 +324,29 @@ function lapRenderGuru(data) {
    ------------------------------------------------------------
    Reka bentuk yang dipilih pengguna: TIADA kemas kini di sini - kalau ada
    silap atau tersalah muat naik dua kali, guru padam sahaja dan muat naik
-   semula. delete_ membuang SEMUA baris guru itu untuk minggu berkenaan, jadi
-   satu klik menghabiskan pertindihan sekali gus.
+   semula.
+
+   v41: tong sampah berdiri pada SATU BARIS jadual, iaitu satu (minggu, subjek).
+   Sebelum v41 delete_ membuang SEMUA baris guru itu untuk minggu berkenaan -
+   betul selagi satu minggu = satu baris, tetapi dengan lima mata pelajaran pada
+   minggu yang sama satu klik memusnahkan empat rekod yang tidak diminta. Subjek
+   baris itu kini dihantar bersama minggu, dan pelayan memadam hanya padanan itu.
    ------------------------------------------------------------ */
+
+/* Kunci satu BARIS rekod dalam LAP.delBtns. Minggu sahaja tidak cukup: butang
+   adalah satu bagi setiap baris, dan satu minggu boleh mempunyai beberapa
+   baris. Subjek dilipat ke huruf kecil supaya "BM" dan "bm " - yang pelayan
+   anggap mata pelajaran yang SAMA - tidak menjadi dua kunci berbeza. */
+function lapKunci(minggu, subjek) {
+  return String(minggu) + '|' + String(subjek == null ? '' : subjek).toLowerCase();
+}
+
+/* Label satu baris rekod untuk mesej: "Minggu 36 · BM", atau "Minggu 36" kalau
+   baris itu tiada subjek. */
+function lapLabel(minggu, subjek) {
+  var s = String(subjek == null ? '' : subjek).trim();
+  return weekLabel(minggu) + (s ? ' · ' + s : '');
+}
 
 function lapHint(text, kind) {
   var n = lapEl('lap-del-hint');
@@ -319,7 +355,9 @@ function lapHint(text, kind) {
 }
 
 function lapResetDelete() {
-  LAP.armedWeek = null;
+  /* v41: `armedKey`, bukan `armedWeek` - butang yang "diarm" ialah satu BARIS
+     rekod (minggu + subjek), kerana satu minggu boleh mempunyai beberapa baris. */
+  LAP.armedKey = null;
   LAP.delBtns = {};
 }
 
@@ -337,23 +375,28 @@ var LAP_DEL_CONFIRM = 'Padam?';
    sehingga baris itu hilang, atau dipulihkan kepada ikon kalau padam GAGAL. */
 var LAP_DEL_BUSY = 'Deleting…';
 
-function lapArm(minggu, on) {
-  var btn = LAP.delBtns[minggu];
+/* `kunci` = lapKunci(minggu, subjek), BUKAN minggu: butang yang diarm ialah satu
+   BARIS rekod, dan satu minggu boleh mempunyai beberapa baris. Lihat lapKunci(). */
+function lapArm(kunci, on) {
+  var btn = LAP.delBtns[kunci];
   if (!btn) return;
 
   btn.classList.toggle('armed', !!on);
   /* Keluar dari keadaan "Deleting…" masuk kembali ke ikon atau ke "Padam?". */
   btn.classList.remove('busy');
   btn.innerHTML = on ? LAP_DEL_CONFIRM : LAP_TRASH_SVG;
-  btn.setAttribute('title', on ? 'Klik sekali lagi untuk padam rekod minggu ini'
-                               : 'Padam rekod minggu ini');
+  var label = btn.dataset && btn.dataset.label;
+  btn.setAttribute('title', on
+    ? (label ? 'Klik sekali lagi untuk padam ' + label
+             : 'Klik sekali lagi untuk padam rekod ini')
+    : (label ? 'Padam rekod ' + label : 'Padam rekod ini'));
 }
 
 /* Butang bertukar kepada teks "Deleting…" sebaik permintaan padam dihantar.
    TEKS, bukan tong sampah: guru yang menekan dan melihat ikon yang sama semula
    akan menekan lagi. */
-function lapBusy(minggu) {
-  var btn = LAP.delBtns[minggu];
+function lapBusy(kunci) {
+  var btn = LAP.delBtns[kunci];
   if (!btn) return;
 
   btn.classList.remove('armed');
@@ -368,8 +411,8 @@ function lapBusy(minggu) {
 }
 
 function lapDisableAll(yes) {
-  Object.keys(LAP.delBtns).forEach(function (w) {
-    LAP.delBtns[w].disabled = !!yes;
+  Object.keys(LAP.delBtns).forEach(function (k) {
+    LAP.delBtns[k].disabled = !!yes;
   });
 }
 
@@ -379,8 +422,13 @@ function lapDisableAll(yes) {
    membuangnya semula atas permintaan pengguna - *"感觉修改键很多余。有错误叫老师删掉
    重新上载就可以了。"* Jadi sel ini kembali kepada satu tindakan, dan namanya
    kembali kepada lapDeleteCell. Aliran yang tinggal: PADAM di sini, kemudian
-   muat naik semula pada halaman Hantar. */
-function lapDeleteCell(minggu, sendiri) {
+   muat naik semula pada halaman Hantar.
+
+   v41: parameternya ialah BARIS rekod (objek dari pelayan: minggu + subjek),
+   bukan sekadar nombor minggu. Kedua-duanya disimpan pada butang - `dataset.
+   minggu` kekal supaya pembaca lama tidak pecah - dan pengekliknya membawa
+   KEDUA-DUANYA, kerana itulah yang menentukan rekod mana yang dibuang. */
+function lapDeleteCell(r, sendiri) {
   var td = document.createElement('td');
   td.className = 'lap-padam';
 
@@ -393,58 +441,67 @@ function lapDeleteCell(minggu, sendiri) {
     return td;
   }
 
+  var minggu = r && r.minggu;
+  var subjek = (r && r.subjek) || '';
+
   var btn = document.createElement('button');
   btn.type = 'button';
   btn.className = 'lap-del';
   btn.innerHTML = LAP_TRASH_SVG;
   btn.dataset.minggu = String(minggu);
-  btn.title = 'Padam rekod ' + weekLabel(minggu) +
+  btn.dataset.subjek = String(subjek);
+  btn.dataset.label = lapLabel(minggu, subjek);
+  btn.title = 'Padam rekod ' + lapLabel(minggu, subjek) +
               ' — anda boleh muat naik semula selepas ini';
-  btn.setAttribute('aria-label', 'Padam rekod ' + weekLabel(minggu));
-  btn.addEventListener('click', function () { lapDeleteClick(minggu); });
+  btn.setAttribute('aria-label', 'Padam rekod ' + lapLabel(minggu, subjek));
+  btn.addEventListener('click', function () { lapDeleteClick(minggu, subjek); });
 
   td.appendChild(btn);
-  LAP.delBtns[minggu] = btn;
+  LAP.delBtns[lapKunci(minggu, subjek)] = btn;
   return td;
 }
 
 /* Pengesahan dua langkah. Sengaja TIDAK menggunakan confirm(): dialog menyekat
    pemaparan dan itu pernah melumpuhkan portal ini. */
-function lapDeleteClick(minggu) {
+function lapDeleteClick(minggu, subjek) {
   if (LAP.deleting) return;
 
-  if (LAP.armedWeek !== minggu) {
-    lapArm(LAP.armedWeek, false);
-    LAP.armedWeek = minggu;
-    lapArm(minggu, true);
+  var kunci = lapKunci(minggu, subjek);
+
+  if (LAP.armedKey !== kunci) {
+    lapArm(LAP.armedKey, false);
+    LAP.armedKey = kunci;
+    lapArm(kunci, true);
     /* Butang itu sendiri sudah berkata "Padam?". Nota ini menerangkan AKIBAT,
        bukan mekanisme - dan ia kekal di bawah jadual, jadi ia hanya berfungsi
        sebagai nota kaki, bukan arahan. */
-    lapHint('Rekod ' + weekLabel(minggu) + ' akan dipadam. Salinan penuh ' +
+    lapHint('Rekod ' + lapLabel(minggu, subjek) + ' akan dipadam. Salinan penuh ' +
             'disimpan dalam tab ResponsesDibuang dan failnya boleh dipulihkan ' +
             'oleh pentadbir, jadi anda boleh muat naik semula selepas ini.', 'bad');
     return;
   }
 
-  lapDoDelete(minggu);
+  lapDoDelete(minggu, subjek);
 }
 
-function lapDoDelete(minggu) {
+function lapDoDelete(minggu, subjek) {
   LAP.deleting = true;
-  LAP.armedWeek = null;
+  LAP.armedKey = null;
   /* v36: teks "Deleting…" menggantikan ikon tong sampah semasa permintaan
      berjalan (dahulunya lapArm(minggu, false) - ikon kembali serta-merta). */
-  lapBusy(minggu);
+  lapBusy(lapKunci(minggu, subjek));
   lapDisableAll(true);
-  lapHint('Memadam ' + weekLabel(minggu) + '…');
+  lapHint('Memadam ' + lapLabel(minggu, subjek) + '…');
 
-  withTimeout(serverCall('apiDelete', [minggu, LAP.tahun]), SLOW_SERVER_MS,
+  /* v41: subjek dihantar sebagai argumen KETIGA, jadi pelayan membuang hanya
+     baris rekod ini - mata pelajaran lain pada minggu yang sama kekal. */
+  withTimeout(serverCall('apiDelete', [minggu, LAP.tahun, subjek]), SLOW_SERVER_MS,
               SLOW_SERVER_MSG)
     .then(function (res) {
       if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal memadam');
 
       LAP.flash = {
-        text: 'Rekod ' + weekLabel(minggu) + ' telah dipadam. ' +
+        text: 'Rekod ' + lapLabel(minggu, subjek) + ' telah dipadam. ' +
               'Anda boleh muat naik semula di halaman Hantar.',
         kind: 'good'
       };
@@ -461,7 +518,7 @@ function lapDoDelete(minggu) {
       /* Padam GAGAL: butang mesti kembali kepada ikon tong sampah. Kalau ia
          kekal "Deleting…" yang dilumpuhkan, guru terperangkap - tiada cara
          mencuba semula selain memuatkan semula halaman. */
-      lapArm(minggu, false);
+      lapArm(lapKunci(minggu, subjek), false);
       lapHint('Gagal memadam: ' + err.message, 'bad');
     })
     .then(function () {

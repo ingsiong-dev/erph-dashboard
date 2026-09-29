@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.40'
+  VERSI: 'v2.41'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -218,13 +218,15 @@ var state = {
   mySubjects: [],       // subjek yang pernah digunakan
   currentWeek: weekFromDate(new Date()),
   targetWeek: weekFromDate(new Date()),
-  record: null,         // rekod sedia ada untuk targetWeek
+  record: null,         // rekod TERAKHIR untuk targetWeek
+  /* v41: satu minggu boleh menyimpan BANYAK rekod (satu bagi setiap mata
+     pelajaran, dan setiap muat naik semula disimpan sebagai sejarah). Dua medan
+     ini memberitahu kad "Anda sudah hantar" APA yang sudah ada pada minggu itu -
+     tanpanya guru hanya nampak rekod terakhir dan menyangka bakinya hilang. */
+  subjekMinggu: [],     // subjek yang sudah ada pada targetWeek (terbaru dahulu)
+  bilRekodMinggu: 0,    // bilangan rekod pada targetWeek
   file: null,           // fail RPH yang dipilih (objek File), atau null
   linkLama: '',         // pautan rekod sedia ada, dikekalkan kalau tiada fail baharu
-  mode: 'new',          /* v28: 'replace' pergi bersama butang pensel (v17 dahulu,
-                           v27 sekali lagi), jadi ini sentiasa 'new'. Dikekalkan
-                           kerana renderAlready() membacanya untuk memilih borang
-                           lawan kad "sudah hantar". */
   sending: false
 };
 
@@ -399,7 +401,6 @@ function selectTeacher(name) {
   saveTeacher(name);
   el.whoName.textContent = name;
   state.targetWeek = state.currentWeek;
-  state.mode = 'new';
   show('send');
   refreshMe();
 }
@@ -424,6 +425,11 @@ function refreshMe() {
       state.weeks = (data && data.weeks) || [];
       state.mySubjects = (data && data.subjects) || [];
       state.record = (data && data.record) || null;
+      /* v41: apa yang sudah ada pada minggu ini. Kedua-duanya diberi nilai
+         lalai di sini, bukan hanya dibaca apabila ada - halaman lama yang
+         bercakap dengan pelayan lama mesti tidak meletupkan kad itu. */
+      state.subjekMinggu = (data && data.subjekMinggu) || [];
+      state.bilRekodMinggu = Number((data && data.bilRekodMinggu) || 0);
       renderSend();
     })
     .catch(function (err) {
@@ -431,6 +437,8 @@ function refreshMe() {
       state.weeks = [];
       state.mySubjects = [];
       state.record = null;
+      state.subjekMinggu = [];
+      state.bilRekodMinggu = 0;
       renderSend();
       setMsg('Amaran: kemajuan tidak dapat dimuatkan (' + err.message + ')', 'bad');
     });
@@ -583,9 +591,20 @@ function renderSubjects() {
   /* Subjek guru INI sahaja: rekod minggu ini dahulu (kalau ada), kemudian
      sejarahnya sendiri, terbaru dahulu. Senarai datang daripada apiMe, yang
      ditapis pada email pemanggil di server - jadi guru lain tidak pernah
-     melihat subjek guru lain. */
+     melihat subjek guru lain.
+
+     v41: SEMUA subjek minggu ini disenaraikan, bukan hanya rekod terakhir -
+     satu minggu kini menyimpan satu rekod bagi setiap mata pelajaran, dan
+     senarai itu ialah cara guru memilih yang mana satu untuk dihantar pula. */
   var sendiri = [];
-  if (state.record && state.record.subject) sendiri.push(state.record.subject);
+  var dariMinggu = state.subjekMinggu.slice();
+  if (state.record && state.record.subject &&
+      dariMinggu.indexOf(state.record.subject) === -1) {
+    dariMinggu.push(state.record.subject);
+  }
+  dariMinggu.forEach(function (s) {
+    if (sendiri.indexOf(s) === -1) sendiri.push(s);
+  });
   state.mySubjects.forEach(function (s) {
     if (sendiri.indexOf(s) === -1) sendiri.push(s);
   });
@@ -660,11 +679,12 @@ function tandakanMinggu(w) {
 /* Bertukar kepada minggu yang diklik - sama seperti <select> dahulu: subjek dan
    fail direset, kemudian refreshMe() memuatkan semula rekod minggu itu.
    Minggu yang SAMA tidak melakukan apa-apa, kerana <select> dahulu hanya
-   memicu 'change' - mengklik ulang minggu semasa tidak boleh memanggil pelayan. */
+   memicu 'change' - mengklik ulang minggu semasa tidak boleh memanggil pelayan.
+   (v41: state.mode dibuang - borang tidak lagi dikunci, jadi tiada "mod" untuk
+   ditetapkan semula. Lihat renderAlready().) */
 function pilihMinggu(w) {
   if (w === state.targetWeek) return;
   state.targetWeek = w;
-  state.mode = 'new';
   resetSubject();
   resetFile();
   setMsg('');
@@ -687,21 +707,38 @@ function klikMinggu(w) {
   };
 }
 
-/* --- 10d. Sudah hantar? --- */
-
+/* --- 10d. Sudah hantar? ---
+   v41: kad ini MEMAKLUMKAN sahaja, dan ia TIDAK lagi menyembunyikan borang.
+   Sebelum v41 ia menutup borang sebaik sahaja minggu itu mempunyai satu rekod,
+   jadi satu minggu = satu rekod: guru yang mengajar lima mata pelajaran tidak
+   dapat menghantar yang kedua, dan rekod pertama yang sudah ada akan ditimpa
+   oleh yang seterusnya. Permintaan pengguna (30 Sep 2026):
+   *"需要改成一星期可以提交很多次，可是同一个星期被计算为一次"* - jadi borang
+   kekal terbuka, dan kad ini menyenaraikan apa yang SUDAH ada pada minggu itu
+   supaya guru nampak dia tidak kehilangan rekod sebelumnya. */
 function renderAlready() {
   var submitted = state.weeks.indexOf(state.targetWeek) !== -1;
-  var locked = state.mode === 'new' && submitted && !!state.record;
+  var ada = submitted && !!state.record;
 
-  el.already.classList.toggle('hidden', !locked);
+  el.already.classList.toggle('hidden', !ada);
+  /* Borang SENTIASA kelihatan - itulah cara "hantar berkali-kali" berfungsi. */
+  el.form.classList.remove('hidden');
 
-  if (locked) {
-    el.alreadyWeek.textContent = 'Minggu ' + state.targetWeek;
-    el.alreadySubject.textContent = state.record.subject || '';
-    el.form.classList.add('hidden');
-  } else {
-    el.form.classList.remove('hidden');
+  if (!ada) {
+    el.alreadySubject.textContent = '';
+    return;
   }
+
+  el.alreadyWeek.textContent = 'Minggu ' + state.targetWeek;
+
+  /* Senarai subjek minggu ini; `record.subject` sebagai jaring keselamatan
+     untuk pelayan lama yang belum menghantar subjekMinggu. */
+  var senarai = state.subjekMinggu.slice();
+  if (!senarai.length && state.record.subject) senarai = [state.record.subject];
+
+  var bil = state.bilRekodMinggu || senarai.length || 1;
+  el.alreadySubject.textContent = bil + ' rekod' +
+    (senarai.length ? ': ' + senarai.join(' · ') : '');
 }
 
 /* --- 10e. Fail RPH (menggantikan medan pautan) ---
@@ -1006,10 +1043,12 @@ function onSubmit(ev) {
          bukan daripada apa yang ditaip guru. */
       var urlSimpan = res.url || link.url || '';
       state.record = { week: state.targetWeek, url: urlSimpan, subject: subject };
-      state.mode = 'new';
 
-      var extra = res.mode === 'updated'
-        ? 'Rekod lama untuk minggu ini telah digantikan.'
+      /* v41: setiap penghantaran MENAMBAH satu baris rekod (tiada lagi
+         penggantian), jadi mesejnya menyebut berapa rekod minggu itu sekarang -
+         guru nampak kerjanya bertambah, bukan ditimpa. */
+      var extra = Number(res.rekodMinggu) > 1
+        ? 'Minggu ini kini ada ' + Number(res.rekodMinggu) + ' rekod.'
         : '';
       el.doneDetail.textContent = weekLabel(state.targetWeek) + ' · ' + subject +
                                   (extra ? ' · ' + extra : '');
@@ -1069,10 +1108,19 @@ el.file.addEventListener('change', function () {
 
 el.fileClear.addEventListener('click', function () {
   /* Buang fail yang dipilih. Kalau ini kemas kini rekod lama, pautan asal
-     dipulihkan supaya guru boleh simpan semula tanpa memilih fail. */
+     dipulihkan supaya guru boleh simpan semula tanpa memilih fail.
+
+     v41: pautan itu hanya dipulihkan apabila rekod terakhir minggu ini memakai
+     SUBJEK yang sedang dipilih. Satu minggu kini menyimpan banyak rekod, jadi
+     memulihkan pautan "rekod terakhir" tanpa mengira subjek akan menyimpan fail
+     Matematik di bawah subjek Bahasa Inggeris - dan itu satu-satunya cara
+     penghantaran tanpa fail baharu boleh menghasilkan rekod yang SALAH, bukan
+     sekadar rekod tambahan. */
   state.file = null;
   if (el.file) el.file.value = '';
-  state.linkLama = (state.record && state.record.url) || '';
+  var r = state.record;
+  state.linkLama = (r && r.url && String(r.subject || '') === String(subjectValue()))
+    ? r.url : '';
   el.url.value = state.linkLama;
   renderFile();
   renderSummary();
@@ -1114,7 +1162,6 @@ el.btnAgain.addEventListener('click', function () {
   resetFile();
   setMsg('');
   state.targetWeek = state.currentWeek;
-  state.mode = 'new';
   show('send');
   refreshMe();
 });

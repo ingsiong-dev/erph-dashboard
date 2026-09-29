@@ -133,11 +133,19 @@
       <p class="center muted small" id="already-subject"></p>
       <!-- Tiada butang di sini (permintaan 16 Sep 2026): kad ini hanya
            MEMAKLUMKAN. Membetulkan rekod dibuat dengan memadamnya pada halaman
-           Laporan e-RPH, kemudian menghantar semula. Baris di bawah wujud
-           supaya guru tidak tersekat tanpa tahu ke mana hendak pergi. -->
+           Laporan e-RPH, kemudian menghantar semula.
+
+           v41: kad ini TIDAK lagi menyembunyikan borang. Sebelum v41 satu
+           minggu hanya boleh menyimpan satu rekod, jadi kad ini menutup borang
+           sebaik sahaja minggu itu dihantar - guru yang mengajar lima mata
+           pelajaran tidak dapat menghantar yang kedua. Permintaan pengguna
+           (30 Sep 2026): "需要改成一星期可以提交很多次，可是同一个星期被计算为
+           一次". Ayat di bawah memberitahu guru borang itu memang masih terbuka,
+           kerana kad "sudah hantar" biasanya bermaksud sebaliknya. -->
       <p class="muted center small">
-        Untuk membetulkan rekod ini, padamkannya pada halaman
-        <strong>Laporan e-RPH</strong>, kemudian hantar semula.
+        Borang di bawah kekal terbuka — hantar lagi untuk mata pelajaran lain
+        pada minggu yang sama. Untuk membetulkan rekod, padamkannya pada
+        halaman <strong>Laporan e-RPH</strong>, kemudian hantar semula.
       </p>
     </div>
 
@@ -377,9 +385,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.40',
+  versi: 'v2.41',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'b7dadd9',
+  build: 'c16cb44',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -389,7 +397,7 @@ var __API = {
   apiBootstrap:   { action: 'bootstrap',   fields: [] },
   apiMe:          { action: 'me',          fields: ['week'] },
   apiSubmit:      { action: 'submit',      fields: ['body'], spread: true },
-  apiDelete:      { action: 'delete',      fields: ['week', 'tahun'] },
+  apiDelete:      { action: 'delete',      fields: ['week', 'tahun', 'subjek'] },
   apiLaporanGuru: { action: 'laporanGuru', fields: ['email', 'tahun'] },
 };
 
