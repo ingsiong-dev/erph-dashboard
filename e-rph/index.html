@@ -359,7 +359,7 @@ var __erph = {
   /* What the teacher reads: the app's own version. */
   versi: 'v2.39',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'd2f604d',
+  build: 'e07dc6e',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -458,15 +458,19 @@ function __ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { retu
 function __ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) {} }
 
 function __sessionExpired(msg) {
+  /* WHICH credential died decides what happens next, and the difference matters:
+     a dead DURABLE KEY is worth one invisible Google round trip (the device proved
+     it signed in before, and the key can be re-minted with no screen at all),
+     while a dead 1-HOUR TOKEN mid-session is the ordinary expiry the app already
+     handles - it has its own error card, and navigating the tab away would destroy
+     that screen and the message on it. The silent hop for an expired token still
+     happens on the NEXT load, from __boot(), which is where it always did. */
+  var wasSesi = !!__erph.token && __erph.token.indexOf('sesi_') === 0;
   __erph.token = null;
   __lsDel('erph-token');
   __lsDel('erph-sesi');
   __showGate('Sesi log masuk telah tamat. Log masuk semula untuk meneruskan.');
-  /* A DEAD SESI KEY is the one case where the silent hop is worth trying from
-     here: the device proved it signed in before (we still hold its e-mail), so
-     Google can usually hand back a token with no screen at all. The one-shot
-     per-tab guard in __trySilent() keeps this from becoming a loop. */
-  __trySilent(__lsGet('erph-emel'));
+  if (wasSesi) __trySilent(__lsGet('erph-emel'));
 }
 
 /* Does this server message mean "the roster refused this ACCOUNT"? Every denial
