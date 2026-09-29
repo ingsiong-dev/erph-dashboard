@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.36'
+  VERSI: 'v2.37'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -631,10 +631,15 @@ function weekStatusText(w) {
    jadi guru yang tidak nampak apa-apa berlaku menekan lagi - kadang-kadang pada
    minggu yang BERLAINAN, dan dua permintaan apiMe berlumba. Permintaan pengguna:
    "按了 minggu 的按钮，左下角显示 Loading... 避免老师一位没按到，按多次".
-   Baris ini di bawah peta minggu (bawah-kiri kad), betul-betul di tempat mata
-   guru berada ketika dia menekan. */
+   v37: tempatnya ialah slot KANAN baris "Kemajuan anda" - permintaan pengguna:
+   "Kemajuan anda 那边的Loading... 哦". Slot itu DIKONGSI dengan kiraan minggu:
+   semasa memuat, kiraan disembunyikan dan "Loading…" mengambil tempatnya. Kalau
+   kedua-duanya kelihatan, .progress-head (flex space-between) akan menunjukkan
+   label di kiri dengan DUA nilai di kanan - sebab itu #prog-text mesti
+   disembunyikan di sini, bukan sekadar ditambah. */
 function setMingguLoading(on) {
   if (el.weekLoading) el.weekLoading.classList.toggle('hidden', !on);
+  if (el.progText) el.progText.classList.toggle('hidden', !!on);
 }
 
 /* Pindahkan cincin .sel SERTA-MERTA, tanpa menunggu pelayan dan tanpa melukis

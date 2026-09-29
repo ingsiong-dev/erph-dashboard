@@ -202,20 +202,26 @@
       <div class="progress-head">
         <span class="muted progress-label">Kemajuan anda</span>
         <strong id="prog-text">—</strong>
+
+        <!-- v36: maklum balas SERTA-MERTA selepas menekan bebola minggu. Guru
+             yang menekan dan tidak nampak apa-apa berlaku akan menekan lagi -
+             kadang-kadang pada minggu yang BERLAINAN, dan dua permintaan apiMe
+             berlumba. Permintaan pengguna: "按了 minggu 的按钮，左下角显示
+             Loading... 避免老师一位没按到，按多次".
+             v37: tempatnya ialah slot KANAN baris "Kemajuan anda" - pengguna:
+             "Kemajuan anda 那边的Loading... 哦". Ia berkongsi slot dengan
+             #prog-text: semasa memuat, kiraan disembunyikan dan baris ini
+             menggantikannya di kanan sekali. .progress-head ialah flex
+             space-between, jadi dua anak yang kelihatan = label di kiri, satu
+             nilai di kanan - tidak pernah dua-dua sekali.
+             Ia muncul pada klik dan hilang apabila data minggu itu tiba
+             (renderSend()), jadi ia tidak pernah tersangkut. -->
+        <span class="muted small hidden" id="week-loading">Loading…</span>
       </div>
       <p class="week-hint muted small" id="week-hint">Klik nombor minggu di bawah
         untuk pilih minggu itu — termasuk minggu yang sudah dihantar, untuk
         dikemas kini.</p>
       <div class="weeks" id="weeks"></div>
-
-      <!-- v36: maklum balas SERTA-MERTA di bawah peta minggu (bawah-kiri kad).
-           Guru yang menekan bebola minggu dan tidak nampak apa-apa berlaku akan
-           menekan lagi - kadang-kadang pada minggu yang BERLAINAN, dan dua
-           permintaan apiMe berlumba. Permintaan pengguna: "按了 minggu 的按钮，
-           左下角显示 Loading... 避免老师一位没按到，按多次".
-           Ia muncul pada klik dan hilang apabila data minggu itu tiba
-           (renderSend()), jadi ia tidak pernah tersangkut. -->
-      <p class="hint hidden" id="week-loading">Loading…</p>
 
       <div class="legend">
         <span><i class="dot done"></i>Selesai</span>
@@ -345,7 +351,7 @@ var __erph = {
   clientId: "314693319074-n5unk6cg17srqoe2fiu1nd67njaj5pp2.apps.googleusercontent.com",
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
-  build: 'dfdb36c',
+  build: '3cdb78c',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
