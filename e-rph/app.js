@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.42'
+  VERSI: 'v2.43'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -177,6 +177,7 @@ var el = {
   scrSend: $('scr-send'),
   whoName: $('who-name'),
   btnChange: $('btn-change'),
+  btnLogKeluar: $('btn-logkeluar'),
   banner: $('banner'),
   already: $('already'),
   alreadyWeek: $('already-week'),
@@ -1416,5 +1417,47 @@ function hantarLapor() {
 if (el.btnLapor) el.btnLapor.addEventListener('click', function () { toggleLapor(true); });
 if (el.laporTutup) el.laporTutup.addEventListener('click', function () { toggleLapor(false); });
 if (el.laporHantar) el.laporHantar.addEventListener('click', hantarLapor);
+
+/* ============================================================
+   11e. LOG KELUAR (v43)
+   ------------------------------------------------------------
+   Permintaan pengguna: *"add a logout button on page Penghantaran e-rph at
+   right-top"*.
+
+   Halaman ini dihidangkan oleh DUA front end, dan identitinya berbeza:
+     - GitHub Pages: kunci sesi kekal (`sesi_<32 hex>`) disimpan dalam
+       localStorage halaman ini dan di server. "Log keluar" mesti membuang
+       KEDUA-DUANYA - membuang salinan pelayar sahaja akan meninggalkan kredensial
+       yang masih boleh dipakai di belakang.
+     - Apps Script /exec: tiada sesi tempatan langsung; identiti ialah sesi Google
+       pelayar. Jadi "log keluar" = buka pemilih akaun Google, dan URL itu dibina
+       di SERVER (apiSwitchAccount) supaya bentuknya hidup di satu tempat.
+   Shim Pages mendedahkan __erphLogKeluar() daripada blok gate; kehadirannya
+   itulah yang membezakan kedua-dua front end - bukan tekaan daripada URL.
+   ============================================================ */
+
+function keluarAkaun() {
+  if (typeof window !== 'undefined' && typeof window.__erphLogKeluar === 'function') {
+    /* Halaman Pages: lupakan sesi (pelayar + server) dan kembali ke skrin log masuk. */
+    window.__erphLogKeluar();
+    return;
+  }
+
+  if (el.btnLogKeluar) el.btnLogKeluar.disabled = true;
+  withTimeout(serverCall('apiSwitchAccount'), SLOW_SERVER_MS, SLOW_SERVER_MSG)
+    .then(function (res) {
+      if (!res || !res.ok || !res.url) throw new Error((res && res.error) || 'Tiada URL');
+      /* _top, BUKAN _blank: kita MEMANG mahu keluar dari iframe sandbox Apps
+         Script - tujuan butang ini ialah meninggalkan halaman ini. */
+      window.open(res.url, '_top');
+    })
+    .catch(function (err) {
+      /* Gagal membuka pemilih akaun tidak boleh meninggalkan butang terkunci. */
+      if (el.btnLogKeluar) el.btnLogKeluar.disabled = false;
+      setMsg('Log keluar gagal: ' + err.message, 'bad');
+    });
+}
+
+if (el.btnLogKeluar) el.btnLogKeluar.addEventListener('click', keluarAkaun);
 
 boot();

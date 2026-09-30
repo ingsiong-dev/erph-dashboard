@@ -72,6 +72,20 @@
         <span class="brand-mark">e-RPH</span>
         <span class="brand-sub">SMK Meradong</span>
       </span>
+      <!-- v43: LOG KELUAR, KANAN-ATAS header - sebaris dengan logo crest
+           (permintaan pengguna: "logout button 在最高上面。跟校徽一样高。右上角").
+           `margin-left: auto` menolaknya ke hujung kanan baris .brand, dan
+           .brand menggunakan align-items:center supaya tingginya sama dengan
+           crest. Ia berada di dalam blok `allowed`, jadi guru yang DITOLAK tidak
+           pernah melihatnya.
+
+           Satu butang untuk DUA front end, dan app.js memilih yang betul:
+             - halaman GitHub Pages: sesi kekal disimpan dalam localStorage, jadi
+               ia dilupakan di pelayar DAN di server, kemudian skrin log masuk
+               dipaparkan semula;
+             - halaman Apps Script: identitinya ialah sesi Google pelayar, jadi
+               butang itu membuka pemilih akaun Google. -->
+      <button class="link-btn keluar" id="btn-logkeluar" type="button">Log keluar</button>
     </div>
     <h1 id="hero-title">Penghantaran Rancangan Pengajaran Harian</h1>
     <p class="hero-year">Sesi <span id="tahun-label">2026</span></p>
@@ -363,7 +377,13 @@
             <tbody id="lap-rows"></tbody>
           </table>
         </div>
-        <p class="lap-note" id="lap-note"></p>
+        <!-- v43: baris nota di sini DIBUANG atas permintaan pengguna
+             ("remove '37 minggu direkodkan daripada 47 minggu persekolahan · 37
+             rekod mata pelajaran · 1 baris mempunyai nombor minggu yang tidak
+             dapat ditentukan'"). Minggu unik sudah pun menjadi kad skor di atas
+             jadual, dan baris yang minggunya tidak dapat ditafsir kini
+             dilaporkan oleh panel diagnostik pentadbir - dengan nombor baris
+             sheet. -->
         <p class="hint center hidden" id="lap-del-hint"></p>
       </div>
 
@@ -442,9 +462,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.42',
+  versi: 'v2.43',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: '06762e7',
+  build: '7c433a9',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -467,6 +487,11 @@ var __API = {
   apiPentadbirPadam:   { action: 'pentadbirPadam',
                          fields: ['week', 'tahun', 'subjek', 'sebagai'] },
   apiLaporMasalah:     { action: 'laporMasalah',     fields: ['body'], spread: true },
+  /* v43: the logout button. On THIS front end app.js uses __erphLogKeluar()
+     instead (it has a stored session to forget), so this mapping is the
+     documented fallback for the day that hook is missing - without it, the
+     button would fail with a TypeError instead of opening the account chooser. */
+  apiSwitchAccount:    { action: 'switchAccount',    fields: [] },
 };
 
 function __call(name, args) {
@@ -693,6 +718,13 @@ function __logKeluar() {
   try { history.replaceState(null, '', location.pathname); } catch (e) {}
   __showGate('Anda telah log keluar. Ketik butang di atas untuk log masuk semula.');
 }
+
+/* v43: app.js needs this for the "Log keluar" button at the top-right of the
+   submit page. Exposing it is what tells app.js WHICH front end it is running
+   on: on the Apps Script page there is no local session at all, so that button
+   opens the Google account chooser instead (apiSwitchAccount). The presence of
+   this function - not a guess from the URL - is the switch. */
+window.__erphLogKeluar = __logKeluar;
 
 /* ---- OAuth redirect flow (same as ains.moe.gov.my "Log masuk dengan akaun
    DELIMa"). A FULL-PAGE redirect to accounts.google.com works inside

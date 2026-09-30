@@ -168,7 +168,6 @@ function lapLoadGuru(cubaan) {
       lapEl('lap-dihantar').textContent = '—';
       lapEl('lap-rows').innerHTML =
         '<tr><td colspan="5" class="lap-empty">Loading…</td></tr>';
-      lapEl('lap-note').textContent = '';
       setTimeout(function () { lapLoadGuru(n + 1); }, 150);
       return;
     }
@@ -176,7 +175,6 @@ function lapLoadGuru(cubaan) {
     lapEl('lap-rows').innerHTML =
       '<tr><td colspan="5" class="lap-empty">Akaun anda tidak dapat dikenal pasti. ' +
       'Muat semula halaman ini.</td></tr>';
-    lapEl('lap-note').textContent = '';
     return;
   }
 
@@ -189,7 +187,6 @@ function lapLoadGuru(cubaan) {
   lapEl('lap-dihantar').textContent = '—';
   lapEl('lap-rows').innerHTML =
     '<tr><td colspan="5" class="lap-empty">Loading…</td></tr>';
-  lapEl('lap-note').textContent = '';
   lapRenderDiag(null);
 
   /* `email` dihantar hanya kerana ia slot pertama tandatangan pelayan; pelayan
@@ -317,26 +314,19 @@ function lapRenderGuru(data, modAdmin) {
     body.appendChild(frag);
   }
 
-  /* Nota: jangan sembunyikan baris yang nombor minggunya tidak dapat
-     ditentukan - nyatakan bilangannya supaya tidak hilang senyap.
+  /* v43: NOTA DI BAWAH JADUAL DIBUANG, atas permintaan pengguna -
+     *"remove '37 minggu direkodkan daripada 47 minggu persekolahan · 37 rekod mata
+     pelajaran · 1 baris mempunyai nombor minggu yang tidak dapat ditentukan'"*.
 
-     v41: dua nombor berbeza mesti disebut, dan kad skor di atas hanya memakai
-     yang PERTAMA. `data.jumlah` = MINGGU unik (kad "Bilangan minggu telah
-     dihantar" - satu minggu dikira sekali walau berapa kali dihantar);
-     `rows.length` = bilangan BARIS rekod, iaitu satu bagi setiap mata pelajaran.
-     Menulis "N minggu direkodkan" dengan N = bilangan baris akan bercanggah
-     dengan kad skor tepat di atasnya. */
-  var mingguUnik = Number(data.jumlah);
-  if (!isFinite(mingguUnik)) mingguUnik = rows.length;
-  var nota = mingguUnik + ' minggu direkodkan daripada ' + LAP.totalWeeks +
-             ' minggu persekolahan' +
-             ' · ' + rows.length + ' rekod mata pelajaran';
-  var jelas = Number(data.tidakJelas) || 0;
-  if (jelas) {
-    nota += ' · ' + jelas + ' baris mempunyai nombor minggu yang tidak dapat ' +
-            'ditentukan (cth. "20 & 21") dan tidak dikira';
-  }
-  lapEl('lap-note').textContent = nota;
+     Dua sebab ia boleh pergi tanpa kehilangan maklumat:
+       - minggu unik sudah pun menjadi KAD SKOR di atas jadual ("Bilangan minggu
+         telah dihantar"), jadi ayat itu mengulang nombor yang sama;
+       - baris yang minggunya tidak dapat ditafsir kini dilaporkan oleh panel
+         DIAGNOSTIK PENTADBIR (v42) - dengan nombor baris SHEET, yang jauh lebih
+         berguna daripada satu kiraan. Guru tidak lagi melihatnya sama sekali.
+
+     `data.jumlah` dan `data.bilRekod` KEKAL dalam kontrak pelayan: ia dipakai
+     oleh panel diagnostik dan oleh ujian, dan ia bukan kos. */
 
   /* Mesej pemadaman dipaparkan SELEPAS jadual dilukis semula, kerana melukis
      semula mengosongkan petunjuk. Satu kali sahaja. */

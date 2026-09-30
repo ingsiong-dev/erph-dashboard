@@ -199,6 +199,30 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .who-name { font-weight: 750; font-size: 15px; }
 
+/* v43: butang Log keluar di KANAN-ATAS header, sebaris dengan logo crest
+   (permintaan pengguna: "logout button 在最高上面。跟校徽一样高。右上角").
+   Header ialah gradien BIRU, jadi .link-btn biasa (kelabu) tidak kelihatan di
+   atasnya - ia perlu cerah, dan bentuk pil nipis menandakannya sebagai kawalan
+   akaun, bukan tindakan halaman.
+   `margin-left: auto` menolaknya ke hujung kanan baris .brand; tanpa itu ia
+   duduk betul-betul di sebelah "SMK Meradong" dan bukan di kanan-atas. */
+.link-btn.keluar {
+  margin-left: auto;
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 650;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .14);
+  white-space: nowrap;
+}
+
+.link-btn.keluar:hover:not(.danger),
+.link-btn.keluar:focus-visible:not(.danger) { background: rgba(255, 255, 255, .26); }
+
+.link-btn.keluar:disabled { opacity: .55; }
+
 .link-btn {
   background: none;
   border: none;
@@ -874,7 +898,9 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 .pill.belum   { background: var(--amber-soft); color: var(--amber); }
 .pill.kosong  { background: #eceff3; color: var(--muted); }
 
-.lap-note { font-size: 12.5px; color: var(--muted); margin: 9px 0 0; }
+/* v43: `.lap-note` DIBUANG bersama elemennya (permintaan pengguna - baris nota
+   di bawah jadual). Peraturan CSS tanpa markup ialah kod mati, dan kod mati yang
+   masih boleh dicapai ialah bug yang menunggu untuk berlaku. */
 .lap-empty { text-align: center; color: var(--muted); padding: 18px 0; }
 
 /* Nama guru sebagai teks, bukan kotak pilihan - halaman ini hanya memaparkan
