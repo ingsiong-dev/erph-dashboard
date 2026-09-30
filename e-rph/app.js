@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.43'
+  VERSI: 'v2.44'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -177,7 +177,6 @@ var el = {
   scrSend: $('scr-send'),
   whoName: $('who-name'),
   btnChange: $('btn-change'),
-  btnLogKeluar: $('btn-logkeluar'),
   banner: $('banner'),
   already: $('already'),
   alreadyWeek: $('already-week'),
@@ -1419,45 +1418,26 @@ if (el.laporTutup) el.laporTutup.addEventListener('click', function () { toggleL
 if (el.laporHantar) el.laporHantar.addEventListener('click', hantarLapor);
 
 /* ============================================================
-   11e. LOG KELUAR (v43)
+   11e. LOG KELUAR — DIBUANG (v44)
    ------------------------------------------------------------
-   Permintaan pengguna: *"add a logout button on page Penghantaran e-rph at
-   right-top"*.
+   v43 menambah butang "Log keluar" di header atas permintaan pengguna; v44
+   membuangnya semula atas permintaan yang berikutnya: *"这样的话就不需要logout键了"*.
 
-   Halaman ini dihidangkan oleh DUA front end, dan identitinya berbeza:
-     - GitHub Pages: kunci sesi kekal (`sesi_<32 hex>`) disimpan dalam
-       localStorage halaman ini dan di server. "Log keluar" mesti membuang
-       KEDUA-DUANYA - membuang salinan pelayar sahaja akan meninggalkan kredensial
-       yang masih boleh dipakai di belakang.
-     - Apps Script /exec: tiada sesi tempatan langsung; identiti ialah sesi Google
-       pelayar. Jadi "log keluar" = buka pemilih akaun Google, dan URL itu dibina
-       di SERVER (apiSwitchAccount) supaya bentuknya hidup di satu tempat.
-   Shim Pages mendedahkan __erphLogKeluar() daripada blok gate; kehadirannya
-   itulah yang membezakan kedua-dua front end - bukan tekaan daripada URL.
+   Sebab keputusan itu masuk akal, dan sebab ia tidak boleh dikembalikan secara
+   sambil lewa:
+     - butang itu memutuskan sesi kekal "log masuk sekali sahaja" (v39). Guru yang
+       menekannya berpatah balik ke pemilih akaun Google - pada telefon dengan
+       beberapa akaun, itulah jalan menuju akaun yang SALAH (masalah v19-v21);
+     - membaca halaman guru LAIN tidak memerlukan log keluar: identiti datang
+       daripada email pemanggil (CONFIG.PENTADBIR_EMAILS, v42).
+
+   Jalan keluar untuk komputer yang dikongsi KEKAL, tanpa sebarang UI:
+       .../e-rph/?logkeluar=1
+   `__logKeluar()` dalam blok gate memadamkan kunci sesi di pelayar DAN di server
+   (membuang salinan pelayar sahaja akan meninggalkan kredensial yang masih boleh
+   dipakai). Kod di sini, `apiSwitchAccount` di server, dan pemetaan shim
+   `switchAccount` dibuang BERSAMA butang itu - kod mati yang masih boleh dicapai
+   ialah bug yang menunggu untuk berlaku.
    ============================================================ */
-
-function keluarAkaun() {
-  if (typeof window !== 'undefined' && typeof window.__erphLogKeluar === 'function') {
-    /* Halaman Pages: lupakan sesi (pelayar + server) dan kembali ke skrin log masuk. */
-    window.__erphLogKeluar();
-    return;
-  }
-
-  if (el.btnLogKeluar) el.btnLogKeluar.disabled = true;
-  withTimeout(serverCall('apiSwitchAccount'), SLOW_SERVER_MS, SLOW_SERVER_MSG)
-    .then(function (res) {
-      if (!res || !res.ok || !res.url) throw new Error((res && res.error) || 'Tiada URL');
-      /* _top, BUKAN _blank: kita MEMANG mahu keluar dari iframe sandbox Apps
-         Script - tujuan butang ini ialah meninggalkan halaman ini. */
-      window.open(res.url, '_top');
-    })
-    .catch(function (err) {
-      /* Gagal membuka pemilih akaun tidak boleh meninggalkan butang terkunci. */
-      if (el.btnLogKeluar) el.btnLogKeluar.disabled = false;
-      setMsg('Log keluar gagal: ' + err.message, 'bad');
-    });
-}
-
-if (el.btnLogKeluar) el.btnLogKeluar.addEventListener('click', keluarAkaun);
 
 boot();

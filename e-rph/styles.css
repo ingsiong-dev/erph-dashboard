@@ -199,29 +199,10 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .who-name { font-weight: 750; font-size: 15px; }
 
-/* v43: butang Log keluar di KANAN-ATAS header, sebaris dengan logo crest
-   (permintaan pengguna: "logout button 在最高上面。跟校徽一样高。右上角").
-   Header ialah gradien BIRU, jadi .link-btn biasa (kelabu) tidak kelihatan di
-   atasnya - ia perlu cerah, dan bentuk pil nipis menandakannya sebagai kawalan
-   akaun, bukan tindakan halaman.
-   `margin-left: auto` menolaknya ke hujung kanan baris .brand; tanpa itu ia
-   duduk betul-betul di sebelah "SMK Meradong" dan bukan di kanan-atas. */
-.link-btn.keluar {
-  margin-left: auto;
-  color: #fff;
-  font-size: 12.5px;
-  font-weight: 650;
-  padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, .55);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, .14);
-  white-space: nowrap;
-}
-
-.link-btn.keluar:hover:not(.danger),
-.link-btn.keluar:focus-visible:not(.danger) { background: rgba(255, 255, 255, .26); }
-
-.link-btn.keluar:disabled { opacity: .55; }
+/* v44: `.link-btn.keluar` DIBUANG bersama butangnya (v43 menambah butang Log
+   keluar, v44 membuangnya semula atas permintaan pengguna: "这样的话就不需要logout
+   键了"). Peraturan CSS tanpa markup ialah kod mati - bentuk yang sama yang v43
+   buang untuk `.lap-note`. */
 
 .link-btn {
   background: none;
