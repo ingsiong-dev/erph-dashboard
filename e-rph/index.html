@@ -413,39 +413,24 @@
        Laporan). -->
   <span class="foot-line">e-RPH · <span class="foot-versi" id="foot-versi"></span> · Developed by Koh Ing Siong</span>
 
-  <!-- v42: DUA alat kecil di footer, atas permintaan pengguna - pentadbir mahu
-       satu jalan masuk yang "不明显的在底部", dan guru perlu satu cara melaporkan
-       masalah daripada telefon mereka.
+  <!-- v42: satu alat kecil di footer, atas permintaan pengguna - pentadbir mahu
+       satu jalan masuk yang "不明显的在底部".
 
        #btn-admin MULA-mula hidden dan app.js hanya membukanya apabila SERVER
        berkata akaun ini pentadbir (bootstrap.pentadbir). Guru biasa tidak pernah
        melihatnya - tetapi itu bukan kunci: setiap api pentadbir memeriksa semula
        email pemanggil di server.
 
-       #btn-lapor untuk SEMUA guru, sengaja kekal kecil: ia satu-satunya cara
-       masalah di telefon mereka (versi halaman yang cache, halaman mana, mesej
-       ralat) sampai ke sekolah. -->
+       v46: butang "Lapor masalah" DIBUANG atas permintaan pengguna
+       (*"去掉lapor masalah"*). Ia hidup hanya satu hari (v42-v45) dan, kerana bug
+       identiti v45, ia tidak pernah berjaya menulis satu baris pun. Pembuangannya
+       penuh - markup, panel, app.js, CSS, peta shim, laluan dan endpoint di
+       server - kerana separuh pembuangan ialah cara paling mudah untuk
+       meninggalkan kod mati yang muncul semula kemudian (lihat v44). -->
   <span class="foot-tools">
     <button type="button" class="link-btn tiny hidden" id="btn-admin">Admin</button>
-    <button type="button" class="link-btn tiny" id="btn-lapor">Lapor masalah</button>
   </span>
 </footer>
-
-<!-- v42: borang aduan. Bukan dialog: dialog menyekat pemaparan dan itu pernah
-     melumpuhkan portal ini (projek ini melarang confirm()/alert() dalam app). -->
-<div class="card lapor hidden" id="lapor-panel">
-  <h3>Laporkan masalah</h3>
-  <p class="muted small">
-    Terangkan apa yang tidak menjadi. Versi halaman (<span id="lapor-versi">—</span>),
-    halaman yang anda buka dan minggu yang dipilih akan dihantar sekali sahaja -
-    itu yang membolehkan pentadbir tahu apa yang anda lihat.
-  </p>
-  <textarea id="lapor-mesej" rows="3" maxlength="500"
-            placeholder="Contoh: tekan HANTAR RPH, keluar &quot;Gagal menghantar&quot;"></textarea>
-  <button class="btn" id="lapor-hantar" type="button">Hantar laporan</button>
-  <button class="btn ghost" id="lapor-tutup" type="button">Tutup</button>
-  <p class="msg" id="lapor-msg" role="status"></p>
-</div>
 
 
 
@@ -460,9 +445,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.45',
+  versi: 'v2.46',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: '371c578',
+  build: '7997f19',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -474,7 +459,7 @@ var __API = {
   apiSubmit:      { action: 'submit',      fields: ['body'], spread: true },
   apiDelete:      { action: 'delete',      fields: ['week', 'tahun', 'subjek'] },
   apiLaporanGuru: { action: 'laporanGuru', fields: ['email', 'tahun'] },
-  /* v42: mod pentadbir + aduan masalah. Nama fungsi ini sengaja BERBEZA daripada
+  /* v42: mod pentadbir. Nama fungsi ini sengaja BERBEZA daripada
      apiSubmit/apiDelete: keupayaan istimewa mesti kelihatan pada nama, bukan
      tersembunyi dalam satu bendera. Server memeriksa email pemanggil pada
      setiap satunya (CONFIG.PENTADBIR_EMAILS). */
@@ -484,9 +469,12 @@ var __API = {
   apiPentadbirHantar:  { action: 'pentadbirHantar',  fields: ['body'], spread: true },
   apiPentadbirPadam:   { action: 'pentadbirPadam',
                          fields: ['week', 'tahun', 'subjek', 'sebagai'] },
-  apiLaporMasalah:     { action: 'laporMasalah',     fields: ['body'], spread: true },
   /* v44: apiSwitchAccount DIBUANG bersama butang "Log keluar" (v43). Jalan keluar
-     ?logkeluar=1 di bawah masih memakai __logKeluar() terus, tanpa UI. */
+     ?logkeluar=1 di bawah masih memakai __logKeluar() terus, tanpa UI.
+     v46: apiLaporMasalah DIBUANG bersama butang/panel "Lapor masalah"
+     (*"去掉lapor masalah"*). Sama seperti v44, peta shim mesti hilang BERSAMA
+     server: peta yang tertinggal ialah kod mati yang memanggil laluan yang sudah
+     tiada, dan ia menyembunyikan ciri yang sudah dibuang daripada carian kod. */
 };
 
 function __call(name, args) {

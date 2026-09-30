@@ -38,8 +38,11 @@ var CONFIG = {
 
      v45: tiada perubahan pada app.js - nombor ini naik bersama server (fungsi
      pentadbir tidak lagi memanggil semakan sesi Google) dan halaman Pages
-     (penolakan dikelaskan mengikut kod [E1]-[E5]). */
-  VERSI: 'v2.45'
+     (penolakan dikelaskan mengikut kod [E1]-[E5]).
+
+     v46: butang/panel "Lapor masalah" DIBUANG (markup, kod, CSS, shim, laluan
+     dan endpoint server) - nombor ini naik bersama dua front end itu. */
+  VERSI: 'v2.46'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -206,13 +209,8 @@ var el = {
   adminBanner: $('admin-banner'),
   adminGuru: $('admin-guru'),
   btnAdmin: $('btn-admin'),
-  btnLapor: $('btn-lapor'),
-  laporPanel: $('lapor-panel'),
-  laporVersi: $('lapor-versi'),
-  laporMesej: $('lapor-mesej'),
-  laporHantar: $('lapor-hantar'),
-  laporTutup: $('lapor-tutup'),
-  laporMsg: $('lapor-msg'),
+  /* v46: btnLapor + panel aduan (laporPanel/laporVersi/laporMesej/laporHantar/
+     laporTutup/laporMsg) DIBUANG bersama ciri itu sendiri. */
   scrDone: $('scr-done'),
   doneDetail: $('done-detail'),
   doneLink: $('done-link'),
@@ -354,7 +352,6 @@ function boot() {
          tidak pernah membuka mod pentadbir secara tidak sengaja. */
       state.pentadbir = data.pentadbir === true;
       if (el.btnAdmin) el.btnAdmin.classList.toggle('hidden', !state.pentadbir);
-      if (el.laporVersi) el.laporVersi.textContent = CONFIG.VERSI;
 
       /* v22: senarai mata pelajaran dibina SEKARANG, bukan hanya selepas
          apiMe menjawab. Tanpa ini borang sempat kelihatan dengan senarai
@@ -1368,58 +1365,25 @@ if (el.adminGuru) {
 }
 
 /* ============================================================
-   11d. LAPOR MASALAH (v42)
+   11d. LAPOR MASALAH — DIBUANG (v46)
    ------------------------------------------------------------
-   Sebab yang paling kerap membuat guru berkata "tak boleh / hilang" tidak
-   kelihatan dari mana-mana payload: versi halaman yang SEBENARNYA dia jalankan
-   (GitHub Pages menyajikan salinan cache sehingga 10 minit), halaman mana, minggu
-   mana, dan mesej ralat yang dia nampak. Semuanya ditulis ke tab LaporanMasalah,
-   dan identitinya datang daripada sesi di server - bukan daripada borang ini.
-   ============================================================ */
+   v42 menambah butang "Lapor masalah" di footer dan satu panel aduan
+   (versi halaman + halaman mana + minggu + mesej + user agent) yang menulis ke
+   tab LaporanMasalah. v46 membuangnya atas permintaan pengguna:
+   *"去掉lapor masalah"*.
 
-function toggleLapor(on) {
-  if (!el.laporPanel) return;
-  el.laporPanel.classList.toggle('hidden', !on);
-  if (on && el.laporMesej) el.laporMesej.focus();
-}
+   Dua sebab pembuangannya PENUH (markup, panel, app.js, CSS, peta shim,
+   laluan doPost, endpoint apiLaporMasalah, dan dua CONFIG di server), bukan
+   sekadar butangnya:
 
-function hantarLapor() {
-  if (!el.laporHantar) return;
+     1. ia tidak pernah menulis satu baris pun. Endpoint itu memanggil
+        assertAllowed_() - semakan SESI GOOGLE - pada halaman Pages yang memang
+        tiada sesi Google (bug v45), jadi setiap aduan ditolak [E1]. Tab
+        LaporanMasalah tidak pernah wujud dalam buku kerja.
+     2. separuh pembuangan meninggalkan kod mati yang muncul semula kemudian -
+        pelajaran yang sama seperti butang Log keluar v43/v44.
 
-  var mesej = el.laporMesej ? String(el.laporMesej.value || '').trim() : '';
-  if (!mesej) {
-    if (el.laporMsg) { el.laporMsg.className = 'msg bad'; el.laporMsg.textContent = 'Sila tulis apa yang berlaku.'; }
-    return;
-  }
-
-  el.laporHantar.disabled = true;
-  if (el.laporMsg) { el.laporMsg.className = 'msg wait'; el.laporMsg.textContent = 'Menghantar…'; }
-
-  var laporan = {
-    versi: CONFIG.VERSI,
-    halaman: (typeof LAP !== 'undefined' && LAP.loaded && !document.getElementById('page-laporan').classList.contains('hidden')) ? 'laporan' : 'hantar',
-    minggu: state.targetWeek,
-    mesej: mesej,
-    agent: (window.navigator && window.navigator.userAgent) || ''
-  };
-
-  withTimeout(serverCall('apiLaporMasalah', [laporan]), SLOW_SERVER_MS, SLOW_SERVER_MSG)
-    .then(function (res) {
-      if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal menghantar');
-      if (el.laporMsg) { el.laporMsg.className = 'msg good'; el.laporMsg.textContent = 'Terima kasih — laporan anda sudah sampai ke sekolah.'; }
-      if (el.laporMesej) el.laporMesej.value = '';
-    })
-    .catch(function (err) {
-      if (el.laporMsg) { el.laporMsg.className = 'msg bad'; el.laporMsg.textContent = 'Gagal menghantar: ' + err.message; }
-    })
-    .then(function () {
-      el.laporHantar.disabled = false;
-    });
-}
-
-if (el.btnLapor) el.btnLapor.addEventListener('click', function () { toggleLapor(true); });
-if (el.laporTutup) el.laporTutup.addEventListener('click', function () { toggleLapor(false); });
-if (el.laporHantar) el.laporHantar.addEventListener('click', hantarLapor);
+   Jejak sejarahnya ada dalam eRPH.md (§v42, §v45, §v46). */
 
 /* ============================================================
    11e. LOG KELUAR — DIBUANG (v44)

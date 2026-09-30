@@ -678,24 +678,9 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 .link-btn.tiny:hover { color: var(--ink, #1d2b3a); }
 
-/* Panel aduan: kad biasa di bawah footer, BUKAN dialog. Dialog menyekat
-   pemaparan dan itu pernah melumpuhkan portal ini. */
-.lapor {
-  max-width: 460px;
-  margin: 0 auto 18px;
-  text-align: left;
-}
-
-.lapor textarea {
-  width: 100%;
-  box-sizing: border-box;
-  font: inherit;
-  font-size: 14px;
-  padding: 10px 12px;
-  border: 1px solid #dde3ea;
-  border-radius: 10px;
-  resize: vertical;
-}
+/* v46: peraturan `.lapor` / `.lapor textarea` DIBUANG bersama panel aduan
+   (*"去掉lapor masalah"*). Ia satu-satunya kad footer yang bukan dialog; tiada
+   peraturan lain bergantung padanya. */
 
 /* Banner mod pentadbir: ungu, bukan warna mana-mana keadaan minggu - ia keadaan
    IDENTITI, dan ia tidak boleh dikelirukan dengan "minggu lepas" atau "cuti". */
