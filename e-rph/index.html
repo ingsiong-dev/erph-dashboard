@@ -460,9 +460,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.44',
+  versi: 'v2.45',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: '4d5adf5',
+  build: '371c578',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -491,6 +491,18 @@ var __API = {
 
 function __call(name, args) {
   var cfg = __API[name];
+  /* v45: NEVER post without a credential. The server reads this page's requests
+     with NO Google session at all (a cross-origin POST from github.io carries no
+     script.google.com cookie), so a token-less call is refused with
+     "Akses ditolak: anda belum didaftarkan" - a message this page then turned
+     into "your account is not on the teacher roster", which is how a client bug
+     came to look like a server-side roster problem (reported 30 Sep 2026).
+     Refusing it here means that message can no longer be produced by the app,
+     and the app's own error card says what actually happened. */
+  if (!__erph.token) {
+    return Promise.reject(new Error('Sesi log masuk tiada pada halaman ini. ' +
+                                    'Muat semula halaman dan log masuk semula.'));
+  }
   var payload = { action: cfg.action, token: __erph.token };
   if (cfg.spread) {
     var src = args[0] || {};
@@ -526,10 +538,24 @@ Object.keys(__API).forEach(function (name) {
           if (self._ok) self._ok(res);
         } else {
           var msg = (res && res.error) || 'Ralat server';
-          /* A refused ACCOUNT is checked first, because it is the more specific
-             condition and the two need different fallout - see __accessDenied(). */
-          if (__isDenied(msg)) { __accessDenied(); }
-          else if (/token|log masuk|tamat tempoh/i.test(msg)) { __sessionExpired(msg); }
+          /* v45: the CODE the server stamped on the refusal decides what
+             happens - NOT the prose. Until v45 the test was /akses ditolak/i,
+             which swept up "mod pentadbir" as well: a non-admin tapping Admin
+             was thrown back to the login gate with a message claiming his
+             account was not on the teacher roster. That fabricated message is
+             the exact screen reported on 30 Sep 2026, and it hid the real cause
+             (a session-only check on a token-only request path) for a whole
+             debugging cycle. Codes: E1 no identity sent, E2 wrong domain,
+             E3 caller not on the roster, E4 not an admin, E5 TARGET teacher not
+             on the roster. See Code.gs, assertAllowed_(). */
+          var kod = __kodTolak(msg);
+          if (kod === 'E4' || kod === 'E5') {
+            /* Refused for THIS ACTION, not as an account. The session is fine:
+               do not clear it and do not raise the gate. The app's own error
+               card shows the server's message. */
+          } else if (__isDenied(msg)) {
+            __accessDenied(kod, msg);
+          } else if (/token|log masuk|tamat tempoh/i.test(msg)) { __sessionExpired(msg); }
           if (self._err) self._err(new Error(msg));
         }
       },
@@ -597,11 +623,23 @@ function __sessionExpired(msg) {
   if (wasSesi) __trySilent(__lsGet('erph-emel'));
 }
 
-/* Does this server message mean "the roster refused this ACCOUNT"? Every denial
-   thrown by the backend's DELIMA gate starts with this exact phrase, and no
-   transient failure (network, quota, bad payload) ever contains it - so this is
-   a precise test rather than a guess at what went wrong. */
+/* Does this server message come from the backend's ACCESS GATE at all? Kept as
+   the coarse test, because the denials are prose as well as codes and an older
+   deployed server (a rollback) sends no code - see __accessDenied(). */
 function __isDenied(msg) { return /akses ditolak/i.test(String(msg || '')); }
+
+/* WHICH refusal this is, from the code the server stamped on it (v45).
+   The backend writes [E1] .. [E5] at the START of every access denial; the
+   difference that matters most is E3 vs E4/E5, because only E3 means "this
+   ACCOUNT is not a teacher" and therefore only E3 may clear the credential. */
+function __kodTolak(msg) {
+  /* The stub is written through a template literal, and there an escape before a
+     bracket is swallowed: the pattern must carry a DOUBLED backslash here to land
+     in the generated page as a single one. (Cost me one run: the page shipped
+     with a regex that did not even parse.) */
+  var m = /\[(E[1-5])\]/.exec(String(msg || ''));
+  return m ? m[1] : '';
+}
 
 /* A refused account must NOT be remembered.
    Reported by the user on 18 Sep 2026 after trying a non-teacher account: the
@@ -615,11 +653,31 @@ function __isDenied(msg) { return /akses ditolak/i.test(String(msg || '')); }
    - so the next tap on the button always reaches the account chooser, which is
    the ONLY way a teacher can pick a different account. (test-pages-oauth.mjs §15
    asserts that silence, so making the silent hop unconditional later would go
-   red rather than strand every refused teacher again.) */
-function __accessDenied() {
+   red rather than strand every refused teacher again.)
+
+   v45: clearing now happens for the codes that really mean "this account was
+   refused" (E2/E3) and NOT for E1/E4/E5 - see __kodTolak(). The 30 Sep 2026
+   report proved the cost of the old coarse test: an admin-only refusal was
+   treated as a roster refusal, so a valid teacher was logged out AND told his
+   account was not on the roster. */
+function __accessDenied(kod, msg) {
   var t = __erph.token || __lsGet('erph-token');
   var email = __lsGet('erph-emel') || '';
   if (t) { var c = __decodeJwt(t); if (c && c.email) email = c.email; }
+  var siapa = email ? email : 'yang dipilih';
+
+  /* [E1]: the PAGE sent no identity at all. The stored credential is not at
+     fault - the page failed to attach it - so clearing it would sign the teacher
+     out for a bug in the page. Keep it, say what happened, and let a reload fix
+     it. (__call() refuses token-less calls, so this should now be unreachable
+     from this page; it is handled because the server can still be called by
+     hand - and because "unreachable" is exactly what the last bug assumed.) */
+  if (kod === 'E1') {
+    __showGate('Halaman ini tidak menghantar bukti log masuk (kod E1). ' +
+               'Muat semula halaman. Mesej pelayan: ' + String(msg || ''));
+    return;
+  }
+
   __erph.token = null;
   __lsDel('erph-token');
   /* The durable key and the remembered address go too: leaving either behind
@@ -627,11 +685,25 @@ function __accessDenied() {
      the exact loop this function exists to break. */
   __lsDel('erph-sesi');
   __lsDel('erph-emel');
-  /* The app behind this gate also renders its own error card for the same
-     refusal, and that card's "Cuba lagi" would re-send the dead token. Name the
-     account and the way out here instead, where the teacher is looking. */
-  __showGate('Akaun ' + (email ? email : 'yang dipilih') + ' tiada dalam senarai guru. ' +
-             'Ketik butang di atas dan pilih akaun guru anda yang lain.');
+
+  /* The text the teacher reads is built from the CODE. Guessing here is what
+     turned "your page sent no credential" into "you are not a teacher"
+     (30 Sep 2026), so the fallback branch quotes the server instead of
+     inventing a reason. */
+  var teks;
+  if (kod === 'E2') {
+    teks = 'Akaun ' + siapa + ' bukan akaun sekolah. Ketik butang di atas dan ' +
+           'pilih akaun DELIMA (@moe-dl.edu.my). (kod E2)';
+  } else if (kod === 'E3' || /senarai guru/i.test(String(msg || ''))) {
+    /* [E3], or an older server whose own words name the roster. */
+    teks = 'Akaun ' + siapa + ' tiada dalam senarai guru. ' +
+           'Ketik butang di atas dan pilih akaun guru anda yang lain.' +
+           (kod ? ' (kod ' + kod + ')' : '');
+  } else {
+    teks = 'Log masuk ditolak oleh pelayan: ' + String(msg || '(tiada mesej)') +
+           ' Ketik butang di atas dan cuba akaun lain.';
+  }
+  __showGate(teks);
 }
 
 function __acceptToken(token) {

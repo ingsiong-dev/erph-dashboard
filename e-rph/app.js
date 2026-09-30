@@ -34,8 +34,12 @@ var CONFIG = {
   /* Versi yang DIPAPARKAN pada footer halaman. Ini SATU-SATUNYA tempat nombor
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
-     deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.44'
+     deploy tanpa ada yang perasan. Naikkan bersama setiap deploy.
+
+     v45: tiada perubahan pada app.js - nombor ini naik bersama server (fungsi
+     pentadbir tidak lagi memanggil semakan sesi Google) dan halaman Pages
+     (penolakan dikelaskan mengikut kod [E1]-[E5]). */
+  VERSI: 'v2.45'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
