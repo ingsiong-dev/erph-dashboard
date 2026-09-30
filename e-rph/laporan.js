@@ -190,33 +190,60 @@ function lapLoadGuru(cubaan) {
   lapEl('lap-rows').innerHTML =
     '<tr><td colspan="5" class="lap-empty">Loading…</td></tr>';
   lapEl('lap-note').textContent = '';
+  lapRenderDiag(null);
 
   /* `email` dihantar hanya kerana ia slot pertama tandatangan pelayan; pelayan
      MENGABAIKANNYA dan memakai identiti sesi. Menghantarnya tidak memberi
-     sebarang kuasa - lihat apiLaporanGuru() dalam Code.gs. */
-  withTimeout(serverCall('apiLaporanGuru', [email, LAP.tahun]), SLOW_SERVER_MS,
-              SLOW_SERVER_MSG)
+     sebarang kuasa - lihat apiLaporanGuru() dalam Code.gs.
+
+     v42: DALAM MOD PENTADBIR sahaja, panggilan bertukar kepada
+     apiPentadbirLaporan(email, tahun) - fungsi yang MEMANG menerima email lain,
+     tetapi hanya selepas server mengesahkan pemanggil berada dalam
+     CONFIG.PENTADBIR_EMAILS. Jadi cawangan ini tidak memberi guru biasa apa-apa:
+     dia akan menerima "Akses ditolak: mod pentadbir ...". */
+  var admin = (typeof state !== 'undefined' && state.adminOn && state.adminGuru)
+    ? state.adminGuru : null;
+
+  var panggil = admin
+    ? serverCall('apiPentadbirLaporan', [admin.email, LAP.tahun])
+    : serverCall('apiLaporanGuru', [email, LAP.tahun]);
+
+  withTimeout(panggil, SLOW_SERVER_MS, SLOW_SERVER_MSG)
     .then(function (data) {
       if (!data || !data.ok) throw new Error((data && data.error) || 'Respons tidak sah');
-      lapRenderGuru(data);
+      lapRenderGuru(data, !!admin);
     })
     .catch(function (err) {
       lapEl('lap-dihantar').textContent = '—';
       lapEl('lap-rows').innerHTML =
         '<tr><td colspan="5" class="lap-empty">Gagal loading: ' +
         escapeHtml(err.message) + '</td></tr>';
+      lapRenderDiag(null);
     });
 }
 
-function lapRenderGuru(data) {
+function lapRenderGuru(data, modAdmin) {
   var rows = data.rows || [];
   lapEl('lap-dihantar').textContent = data.jumlah;
   lapResetDelete();
 
   /* Adakah laporan yang sedang dipaparkan ini milik guru yang log masuk?
-     Hanya kalau ya barulah tong sampah ditawarkan. */
-  var sendiri = !!state.email && String(data.email || '').toLowerCase() ===
-                String(state.email).toLowerCase();
+     Hanya kalau ya barulah tong sampah ditawarkan.
+
+     v42: dalam mod pentadbir, laporan itu MILIK ORANG LAIN dengan sengaja -
+     pentadbir masuk untuk membetulkan rekod yang tersekat, jadi tong sampah
+     mesti ditawarkan. Ini BUKAN pelonggaran kawalan: apiPentadbirPadam memeriksa
+     semula email pemanggil di server, dan guru biasa tetap ditolak. */
+  var sendiri = !!modAdmin || (!!state.email && String(data.email || '').toLowerCase() ===
+                String(state.email).toLowerCase());
+
+  /* Nama pada kotak CIKGU: dalam mod pentadbir ia nama GURU SASARAN (data.nama
+     datang daripada laporan itu sendiri), bukan nama pentadbir. */
+  if (modAdmin && data.nama) {
+    lapEl('lap-guru-nama').textContent = data.nama;
+  }
+
+  lapRenderDiag(modAdmin ? data.diagnostik : null);
 
   var body = lapEl('lap-rows');
   body.innerHTML = '';
@@ -317,6 +344,72 @@ function lapRenderGuru(data) {
     lapHint(LAP.flash.text, LAP.flash.kind);
     LAP.flash = null;
   }
+}
+
+/* ------------------------------------------------------------
+   Diagnostik pentadbir (v42)
+   ------------------------------------------------------------
+   Hanya diisi apabila pelayan menghantar `diagnostik`, iaitu daripada
+   apiPentadbirLaporan sahaja. Ia menjawab soalan yang pentadbir sebenarnya
+   datang untuk menjawab - "kenapa guru ini kata rekodnya hilang?" - dan setiap
+   baris di bawah ialah satu sebab yang TIDAK kelihatan dari dalam app.
+   ------------------------------------------------------------ */
+
+function lapRenderDiag(d) {
+  var card = lapEl('lap-diag');
+  var body = lapEl('lap-diag-body');
+  if (!card || !body) return;
+
+  if (!d) {
+    card.classList.add('hidden');
+    body.innerHTML = '';
+    return;
+  }
+
+  var baris = [];
+
+  var tidakJelas = d.mingguTidakJelas || [];
+  if (tidakJelas.length) {
+    baris.push('<p class="bad"><strong>' + tidakJelas.length +
+      ' baris minggu tidak dapat ditafsir</strong> — baris ini TIDAK dikira ' +
+      'langsung, jadi minggu itu nampak "belum dihantar" walaupun guru sudah ' +
+      'menghantarnya:</p><ul>' +
+      tidakJelas.slice(0, 8).map(function (x) {
+        return '<li>baris ' + x.baris + ': “' + escapeHtml(x.teks) + '”</li>';
+      }).join('') + '</ul>');
+  }
+
+  var bertindih = d.bertindih || [];
+  if (bertindih.length) {
+    baris.push('<p><strong>' + bertindih.length +
+      ' pasangan (minggu, subjek) bertindih</strong> — jadual menunjukkan yang ' +
+      'TERBARU, sejarah penuh ada dalam sheet:</p><ul>' +
+      bertindih.slice(0, 8).map(function (x) {
+        return '<li>Minggu ' + x.minggu + ' · ' +
+               escapeHtml(x.subjek || '(tiada subjek)') + ' × ' + x.bilangan + '</li>';
+      }).join('') + '</ul>');
+  }
+
+  if (d.tiadaTahun) {
+    baris.push('<p>' + d.tiadaTahun + ' baris tanpa Tahun (era borang Google) — ' +
+               'masih dikira.</p>');
+  }
+  if (d.urlTiada) {
+    baris.push('<p class="bad">' + d.urlTiada + ' baris TIADA pautan fail.</p>');
+  }
+
+  if (!baris.length) {
+    baris.push('<p class="good">Tiada keanehan dikesan: setiap baris ada minggu ' +
+               'yang jelas, ada pautan, dan tiada pasangan bertindih.</p>');
+  }
+
+  var sem = d.semakan || {};
+  baris.push('<p class="muted small">Minggu tertinggi direkodkan: ' +
+             (d.mingguMaks || '—') + ' · Semakan: ' + (sem.disemak || 0) +
+             ' Disemak, ' + (sem.kosong || 0) + ' kosong, ' + (sem.lain || 0) + ' lain.</p>');
+
+  body.innerHTML = baris.join('');
+  card.classList.remove('hidden');
 }
 
 /* ------------------------------------------------------------
@@ -494,9 +587,19 @@ function lapDoDelete(minggu, subjek) {
   lapHint('Memadam ' + lapLabel(minggu, subjek) + '…');
 
   /* v41: subjek dihantar sebagai argumen KETIGA, jadi pelayan membuang hanya
-     baris rekod ini - mata pelajaran lain pada minggu yang sama kekal. */
-  withTimeout(serverCall('apiDelete', [minggu, LAP.tahun, subjek]), SLOW_SERVER_MS,
-              SLOW_SERVER_MSG)
+     baris rekod ini - mata pelajaran lain pada minggu yang sama kekal.
+
+     v42: dalam mod pentadbir, panggilan bertukar kepada apiPentadbirPadam, yang
+     membawa email guru sasaran sebagai argumen KEEMPAT. Guru biasa yang memaksa
+     cawangan ini ditolak di server ("Akses ditolak: mod pentadbir ..."). */
+  var admin = (typeof state !== 'undefined' && state.adminOn && state.adminGuru)
+    ? state.adminGuru : null;
+
+  var panggil = admin
+    ? serverCall('apiPentadbirPadam', [minggu, LAP.tahun, subjek, admin.email])
+    : serverCall('apiDelete', [minggu, LAP.tahun, subjek]);
+
+  withTimeout(panggil, SLOW_SERVER_MS, SLOW_SERVER_MSG)
     .then(function (res) {
       if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal memadam');
 

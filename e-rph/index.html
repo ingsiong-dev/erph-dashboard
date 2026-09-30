@@ -127,6 +127,12 @@
 
     <div id="banner" class="banner"></div>
 
+    <!-- v42: hanya kelihatan dalam mod pentadbir. Ia menyatakan dengan JELAS
+         bahawa apa-apa yang dihantar dari halaman ini akan ditulis atas nama
+         guru yang dipilih - supaya pentadbir tidak tersalah hantar untuk
+         dirinya sendiri, dan supaya skrin itu tidak boleh disalah tafsir. -->
+    <div id="admin-banner" class="banner admin hidden"></div>
+
     <div id="already" class="card already hidden">
       <div class="big-icon">🎉</div>
       <h3 class="center">Anda sudah hantar untuk <span id="already-week"></span></h3>
@@ -279,8 +285,16 @@
           <div>
             <label>CIKGU</label>
             <!-- Nama sahaja - tiada senarai pilihan. Setiap guru hanya melihat
-                 laporannya sendiri, jadi tiada apa-apa untuk dipilih. -->
+                 laporannya sendiri, jadi tiada apa-apa untuk dipilih.
+
+                 v42: DALAM MOD PENTADBIR sahaja, nama itu digantikan oleh
+                 <select> seluruh senarai DELIMA supaya pentadbir boleh masuk ke
+                 halaman mana-mana guru. Select itu datang daripada
+                 apiPentadbirGuru(), yang menolak sesiapa yang bukan dalam
+                 CONFIG.PENTADBIR_EMAILS - jadi ia bukan sekadar disembunyikan
+                 daripada guru biasa, ia TIDAK BOLEH diperoleh oleh mereka. -->
             <p class="lap-guru-nama" id="lap-guru-nama">—</p>
+            <select id="admin-guru" class="hidden"></select>
 
             <!-- RUANG DI BAWAH NAMA GURU, kini butang REKOD SEMAKAN RPH (29 Sep
                  2026). Permintaan pengguna: "把这个做成一个按键在老师名字下面的空位
@@ -353,6 +367,16 @@
         <p class="hint center hidden" id="lap-del-hint"></p>
       </div>
 
+      <!-- v42: DIAGNOSTIK PENTADBIR sahaja. Menjawab "kenapa guru kata rekodnya
+           hilang" - baris yang minggunya tidak dapat ditafsir (jadi sistem tidak
+           mengiranya langsung), pasangan (minggu, subjek) yang bertindih, baris
+           era borang tanpa Tahun, baris tanpa pautan fail. Tiada satu pun
+           kelihatan dari dalam app; semuanya kelihatan dari sheet. -->
+      <div class="card hidden" id="lap-diag">
+        <h3>Diagnostik (pentadbir)</h3>
+        <div id="lap-diag-body" class="diag-body"></div>
+      </div>
+
     </section>
   </div><!-- /#page-laporan -->
 
@@ -370,7 +394,40 @@
        yang boleh menyimpang. Satu footer untuk KEDUA-DUA halaman (Hantar &
        Laporan). -->
   <span class="foot-line">e-RPH · <span class="foot-versi" id="foot-versi"></span> · Developed by Koh Ing Siong</span>
+
+  <!-- v42: DUA alat kecil di footer, atas permintaan pengguna - pentadbir mahu
+       satu jalan masuk yang "不明显的在底部", dan guru perlu satu cara melaporkan
+       masalah daripada telefon mereka.
+
+       #btn-admin MULA-mula hidden dan app.js hanya membukanya apabila SERVER
+       berkata akaun ini pentadbir (bootstrap.pentadbir). Guru biasa tidak pernah
+       melihatnya - tetapi itu bukan kunci: setiap api pentadbir memeriksa semula
+       email pemanggil di server.
+
+       #btn-lapor untuk SEMUA guru, sengaja kekal kecil: ia satu-satunya cara
+       masalah di telefon mereka (versi halaman yang cache, halaman mana, mesej
+       ralat) sampai ke sekolah. -->
+  <span class="foot-tools">
+    <button type="button" class="link-btn tiny hidden" id="btn-admin">Admin</button>
+    <button type="button" class="link-btn tiny" id="btn-lapor">Lapor masalah</button>
+  </span>
 </footer>
+
+<!-- v42: borang aduan. Bukan dialog: dialog menyekat pemaparan dan itu pernah
+     melumpuhkan portal ini (projek ini melarang confirm()/alert() dalam app). -->
+<div class="card lapor hidden" id="lapor-panel">
+  <h3>Laporkan masalah</h3>
+  <p class="muted small">
+    Terangkan apa yang tidak menjadi. Versi halaman (<span id="lapor-versi">—</span>),
+    halaman yang anda buka dan minggu yang dipilih akan dihantar sekali sahaja -
+    itu yang membolehkan pentadbir tahu apa yang anda lihat.
+  </p>
+  <textarea id="lapor-mesej" rows="3" maxlength="500"
+            placeholder="Contoh: tekan HANTAR RPH, keluar &quot;Gagal menghantar&quot;"></textarea>
+  <button class="btn" id="lapor-hantar" type="button">Hantar laporan</button>
+  <button class="btn ghost" id="lapor-tutup" type="button">Tutup</button>
+  <p class="msg" id="lapor-msg" role="status"></p>
+</div>
 
 
 
@@ -385,9 +442,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.41',
+  versi: 'v2.42',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'c16cb44',
+  build: '06762e7',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -399,6 +456,17 @@ var __API = {
   apiSubmit:      { action: 'submit',      fields: ['body'], spread: true },
   apiDelete:      { action: 'delete',      fields: ['week', 'tahun', 'subjek'] },
   apiLaporanGuru: { action: 'laporanGuru', fields: ['email', 'tahun'] },
+  /* v42: mod pentadbir + aduan masalah. Nama fungsi ini sengaja BERBEZA daripada
+     apiSubmit/apiDelete: keupayaan istimewa mesti kelihatan pada nama, bukan
+     tersembunyi dalam satu bendera. Server memeriksa email pemanggil pada
+     setiap satunya (CONFIG.PENTADBIR_EMAILS). */
+  apiPentadbirGuru:    { action: 'pentadbirGuru',    fields: [] },
+  apiPentadbirLihat:   { action: 'pentadbirLihat',   fields: ['email', 'week'] },
+  apiPentadbirLaporan: { action: 'pentadbirLaporan', fields: ['email', 'tahun'] },
+  apiPentadbirHantar:  { action: 'pentadbirHantar',  fields: ['body'], spread: true },
+  apiPentadbirPadam:   { action: 'pentadbirPadam',
+                         fields: ['week', 'tahun', 'subjek', 'sebagai'] },
+  apiLaporMasalah:     { action: 'laporMasalah',     fields: ['body'], spread: true },
 };
 
 function __call(name, args) {
@@ -406,7 +474,15 @@ function __call(name, args) {
   var payload = { action: cfg.action, token: __erph.token };
   if (cfg.spread) {
     var src = args[0] || {};
-    Object.keys(src).forEach(function (k) { payload[k] = src[k]; });
+    Object.keys(src).forEach(function (k) {
+      /* v42: the envelope owns action and token (NO BACKTICKS in this stub -
+         it lives inside a template literal). A spread body that carries its own
+         action - the submit payload still does - would otherwise OVERWRITE the
+         route chosen here, and an admin call would silently land on the plain
+         teacher path (i.e. write the record as the ADMIN). */
+      if (k === 'action' || k === 'token') return;
+      payload[k] = src[k];
+    });
   } else {
     cfg.fields.forEach(function (f, i) { if (args[i] !== undefined) payload[f] = args[i]; });
   }

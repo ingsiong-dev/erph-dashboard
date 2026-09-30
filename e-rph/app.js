@@ -35,7 +35,7 @@ var CONFIG = {
      itu hidup, dan verify_live.py mengesahkan ia sepadan dengan versi
      deployment - supaya footer tidak boleh diam-diam ketinggalan beberapa
      deploy tanpa ada yang perasan. Naikkan bersama setiap deploy. */
-  VERSI: 'v2.41'
+  VERSI: 'v2.42'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -198,6 +198,17 @@ var el = {
   progText: $('prog-text'),
   weeks: $('weeks'),
   weekLoading: $('week-loading'),
+  /* v42 */
+  adminBanner: $('admin-banner'),
+  adminGuru: $('admin-guru'),
+  btnAdmin: $('btn-admin'),
+  btnLapor: $('btn-lapor'),
+  laporPanel: $('lapor-panel'),
+  laporVersi: $('lapor-versi'),
+  laporMesej: $('lapor-mesej'),
+  laporHantar: $('lapor-hantar'),
+  laporTutup: $('lapor-tutup'),
+  laporMsg: $('lapor-msg'),
   scrDone: $('scr-done'),
   doneDetail: $('done-detail'),
   doneLink: $('done-link'),
@@ -225,6 +236,15 @@ var state = {
      tanpanya guru hanya nampak rekod terakhir dan menyangka bakinya hilang. */
   subjekMinggu: [],     // subjek yang sudah ada pada targetWeek (terbaru dahulu)
   bilRekodMinggu: 0,    // bilangan rekod pada targetWeek
+  /* v42 MOD PENTADBIR. `pentadbir` ialah keupayaan yang SERVER berikan
+     (bootstrap.pentadbir); `adminOn` pula keadaan butang di footer. Butang itu
+     hanya muncul apabila `pentadbir` benar, dan setiap panggilan pentadbir tetap
+     diperiksa semula di server - jadi membuka `adminOn` dari konsol pelayar
+     tidak membuka apa-apa. */
+  pentadbir: false,
+  adminOn: false,
+  adminGuruList: [],    // senarai DELIMA (hanya diambil dalam mod pentadbir)
+  adminGuru: null,      // {nama, email} guru yang sedang dilihat / diwakili
   file: null,           // fail RPH yang dipilih (objek File), atau null
   linkLama: '',         // pautan rekod sedia ada, dikekalkan kalau tiada fail baharu
   sending: false
@@ -325,6 +345,13 @@ function boot() {
       state.subjects = data.subjects || [];
       fillDatalist(el.subjectList, state.subjects);
 
+      /* v42: keupayaan pentadbir datang daripada SERVER. `!== true` (bukan
+         sekadar "truthy") supaya pelayan lama yang tidak menghantar medan ini
+         tidak pernah membuka mod pentadbir secara tidak sengaja. */
+      state.pentadbir = data.pentadbir === true;
+      if (el.btnAdmin) el.btnAdmin.classList.toggle('hidden', !state.pentadbir);
+      if (el.laporVersi) el.laporVersi.textContent = CONFIG.VERSI;
+
       /* v22: senarai mata pelajaran dibina SEKARANG, bukan hanya selepas
          apiMe menjawab. Tanpa ini borang sempat kelihatan dengan senarai
          menurun yang KOSONG - dan senarai kosong pada satu-satunya medan
@@ -419,7 +446,15 @@ function refreshMe() {
      salah. Respons basi hanya diabaikan; yang terbaharu sentiasa menang. */
   var seq = ++_meSeq;
 
-  withTimeout(serverCall('apiMe', [state.targetWeek]), SLOW_SERVER_MS, SLOW_SERVER_MSG)
+  /* v42: dalam mod pentadbir, panggilan itu membawa guru SASARAN. Ia satu-satunya
+     perbezaan pada pelanggan - pelayan tetap memutuskan sama ada pemanggil
+     dibenarkan, dan guru biasa yang memaksa cawangan ini hanya menerima
+     "Akses ditolak: mod pentadbir ...". */
+  var panggil = (state.adminOn && state.adminGuru)
+    ? serverCall('apiPentadbirLihat', [state.adminGuru.email, state.targetWeek])
+    : serverCall('apiMe', [state.targetWeek]);
+
+  withTimeout(panggil, SLOW_SERVER_MS, SLOW_SERVER_MSG)
     .then(function (data) {
       if (seq !== _meSeq) return;
       state.weeks = (data && data.weeks) || [];
@@ -460,6 +495,7 @@ function renderSend() {
      tempat yang dilalui kedua-dua jalan itu. */
   setMingguLoading(false);
   renderBanner();
+  renderAdmin();         /* v42: banner "mod pentadbir" ikut keadaan yang sama */
   renderSubjects();
   renderAlready();
   renderFile();          /* mesti di sini juga: ia bergantung pada state.file
@@ -849,6 +885,15 @@ function pilihFail(fail) {
 
 /* --- 10f. Ringkasan sebelum hantar --- */
 
+/* Nama yang dipaparkan pada ringkasan "Guru". Dalam mod pentadbir ia MESTI nama
+   GURU SASARAN: kalau tidak, pentadbir melihat namanya sendiri pada penghantaran
+   yang akan ditulis atas nama orang lain - satu-satunya baris pada skrin itu yang
+   boleh membuat dia tersalah faham. */
+function guruRingkasan() {
+  if (state.adminOn && state.adminGuru) return state.adminGuru.nama;
+  return state.teacher || '—';
+}
+
 /* v32: tiga teks ini ialah LABEL dalam jadual, bukan pertengahan ayat - jadi
    huruf besar pada perkataan pertama ("belum" -> "Belum", permintaan pengguna).
    Ayat penuh di tempat lain (cth. "Sesi belum bermula.") kekal seperti adanya. */
@@ -868,7 +913,7 @@ function renderSummary() {
 
   var rows = [
     ['Minggu', weekLabel(state.targetWeek)],
-    ['Guru', state.teacher || '—'],
+    ['Guru', guruRingkasan()],
     ['Subjek', subject || '<span class="muted">Belum diisi</span>'],
     ['Fail RPH', failTeks]
   ];
@@ -1034,6 +1079,19 @@ function onSubmit(ev) {
           dataBase64: b64
         };
       }
+
+      /* v42: dalam mod pentadbir, penghantaran pergi ke apiPentadbirHantar dan
+         membawa `sebagai` - email guru sasaran. `action` di atas tidak mengawal
+         apa-apa di server (setiap laluan menetapkan tindakannya sendiri); ia
+         dikekalkan kerana pelanggan lama menghantarnya.
+
+         Baris yang ditulis membawa identiti GURU itu, bukan pentadbir: kalau
+         tidak, rekod itu tidak akan muncul dalam laporannya sendiri. Tindakan
+         pentadbir dicatat berasingan dalam tab LogAdmin. */
+      if (state.adminOn && state.adminGuru) {
+        payload.sebagai = state.adminGuru.email;
+        return withTimeout(serverCall('apiPentadbirHantar', [payload]), hadMasa, mesejMasa);
+      }
       return withTimeout(serverCall('apiSubmit', [payload]), hadMasa, mesejMasa);
     })
     .then(function (res) {
@@ -1176,5 +1234,187 @@ el.btnAgain.addEventListener('click', function () {
 
 el.form.addEventListener('submit', onSubmit);
 el.btnRetry.addEventListener('click', boot);
+
+/* ============================================================
+   11c. MOD PENTADBIR (v42) — super user guru data
+   ------------------------------------------------------------
+   Permintaan pengguna (30 Sep 2026): *"我想开一条super user通道。以便我进入任何
+   一位老师的页面来了解他所面临的问题"*, bentuknya: *"老师app里加小小的'Admin'
+   不明显的在底部 … 进去了老师名那边是 drop down，我可以选择进入任何一位老师"*.
+
+   TIGA peringkat, dan hanya yang pertama adalah kunci sebenar:
+     1. SERVER: CONFIG.PENTADBIR_EMAILS - setiap api pentadbir memeriksa semula
+        email pemanggil (lihat assertPentadbir_ dalam Code.gs);
+     2. bootstrap.pentadbir -> butang #btn-admin hanya dibuka untuk pentadbir;
+     3. keadaan halaman (state.adminOn/adminGuru) -> memilih panggilan mana yang
+        dihantar. Peringkat 3 boleh dipalsukan dari konsol pelayar dan ia TIDAK
+        membuka apa-apa: pelayan tetap menolak, dan guru tetap hanya melihat
+        laporannya sendiri.
+
+   Guru biasa TIDAK NAMPAK butang ini, dan sekiranya ia dipaksa kelihatan, setiap
+   panggilan pentadbir ditolak dengan "Akses ditolak: mod pentadbir ...".
+   ============================================================ */
+
+function adminNama() {
+  return (state.adminGuru && state.adminGuru.nama) || '';
+}
+
+/** Banner yang menyatakan dengan jelas siapa yang diwakili. */
+function renderAdmin() {
+  if (!el.adminBanner) return;
+
+  if (!state.adminOn || !state.adminGuru) {
+    el.adminBanner.classList.add('hidden');
+    el.adminBanner.innerHTML = '';
+    if (el.whoName) el.whoName.textContent = state.teacher || '—';
+    return;
+  }
+
+  el.adminBanner.classList.remove('hidden');
+  el.adminBanner.innerHTML = '🛠️ <strong>Mod pentadbir</strong> — ' +
+    'anda melihat halaman <strong>' + escapeHtml(adminNama()) + '</strong>.' +
+    '<small>Sebarang penghantaran atau pemadaman di sini ditulis atas nama ' +
+    escapeHtml(adminNama()) + ', dan dicatat dalam tab LogAdmin.</small>';
+  if (el.whoName) el.whoName.textContent = adminNama();
+}
+
+/** Isi <select> pentadbir pada halaman Laporan. */
+function renderAdminGuru() {
+  if (!el.adminGuru) return;
+  el.adminGuru.innerHTML = '';
+  el.adminGuru.classList.toggle('hidden', !state.adminOn);
+  if (!state.adminOn) return;
+
+  addOption(el.adminGuru, '', '— Pilih guru —');
+  state.adminGuruList.forEach(function (g) {
+    addOption(el.adminGuru, g.email, g.nama + ' · ' + g.email);
+  });
+  el.adminGuru.value = (state.adminGuru && state.adminGuru.email) || '';
+}
+
+/**
+ * Hidup/matikan mod pentadbir. Senarai guru diambil SEKALI sahaja, dan hanya
+ * selepas server membenarkan (apiPentadbirGuru menolak guru biasa) - ia senarai
+ * penuh 125 guru, jadi ia tidak boleh diminta oleh sesiapa.
+ */
+function toggleAdmin() {
+  if (!state.pentadbir) return;   /* butang pun tidak sepatutnya wujud */
+
+  if (state.adminOn) {
+    state.adminOn = false;
+    state.adminGuru = null;
+    state.adminGuruList = [];
+    if (el.btnAdmin) el.btnAdmin.textContent = 'Admin';
+    renderAdminGuru();
+    renderAdmin();
+    /* Kembali ke halaman sendiri: data yang dipaparkan mesti ikut identiti. */
+    refreshMe();
+    if (typeof LAP !== 'undefined' && LAP.loaded) lapLoadGuru();
+    return;
+  }
+
+  if (el.btnAdmin) el.btnAdmin.textContent = 'Admin…';
+  withTimeout(serverCall('apiPentadbirGuru'), SLOW_SERVER_MS, SLOW_SERVER_MSG)
+    .then(function (data) {
+      if (!data || !data.ok) throw new Error((data && data.error) || 'Respons tidak sah');
+      state.adminGuruList = data.guru || [];
+      state.adminOn = true;
+      if (el.btnAdmin) el.btnAdmin.textContent = 'Keluar Admin';
+      renderAdminGuru();
+      renderAdmin();
+      setMsg('Mod pentadbir: pilih guru pada halaman Laporan e-RPH.', '');
+    })
+    .catch(function (err) {
+      /* Ditutup semula: butang tidak boleh kekal dalam keadaan "Admin…" yang
+         menjanjikan mod yang server baru sahaja tolak. */
+      state.adminOn = false;
+      state.adminGuruList = [];
+      if (el.btnAdmin) el.btnAdmin.textContent = 'Admin';
+      renderAdminGuru();
+      renderAdmin();
+      setMsg('Mod pentadbir tidak dapat dibuka: ' + err.message, 'bad');
+    });
+}
+
+/** Pilih guru sasaran (hanya dalam mod pentadbir). */
+function pilihAdminGuru(email) {
+  if (!state.adminOn) return;
+
+  var jumpa = null;
+  state.adminGuruList.forEach(function (g) {
+    if (g.email === email) jumpa = g;
+  });
+
+  state.adminGuru = jumpa;
+  if (!jumpa) { renderAdmin(); return; }
+
+  /* Subjek dan fail guru sebelumnya mesti TIDAK bocor ke guru yang baru dipilih. */
+  resetSubject();
+  resetFile();
+  state.targetWeek = state.currentWeek;
+  setMsg('');
+  renderAdmin();
+  refreshMe();
+  if (typeof LAP !== 'undefined' && LAP.loaded) lapLoadGuru();
+}
+
+if (el.btnAdmin) el.btnAdmin.addEventListener('click', toggleAdmin);
+if (el.adminGuru) {
+  el.adminGuru.addEventListener('change', function () { pilihAdminGuru(this.value); });
+}
+
+/* ============================================================
+   11d. LAPOR MASALAH (v42)
+   ------------------------------------------------------------
+   Sebab yang paling kerap membuat guru berkata "tak boleh / hilang" tidak
+   kelihatan dari mana-mana payload: versi halaman yang SEBENARNYA dia jalankan
+   (GitHub Pages menyajikan salinan cache sehingga 10 minit), halaman mana, minggu
+   mana, dan mesej ralat yang dia nampak. Semuanya ditulis ke tab LaporanMasalah,
+   dan identitinya datang daripada sesi di server - bukan daripada borang ini.
+   ============================================================ */
+
+function toggleLapor(on) {
+  if (!el.laporPanel) return;
+  el.laporPanel.classList.toggle('hidden', !on);
+  if (on && el.laporMesej) el.laporMesej.focus();
+}
+
+function hantarLapor() {
+  if (!el.laporHantar) return;
+
+  var mesej = el.laporMesej ? String(el.laporMesej.value || '').trim() : '';
+  if (!mesej) {
+    if (el.laporMsg) { el.laporMsg.className = 'msg bad'; el.laporMsg.textContent = 'Sila tulis apa yang berlaku.'; }
+    return;
+  }
+
+  el.laporHantar.disabled = true;
+  if (el.laporMsg) { el.laporMsg.className = 'msg wait'; el.laporMsg.textContent = 'Menghantar…'; }
+
+  var laporan = {
+    versi: CONFIG.VERSI,
+    halaman: (typeof LAP !== 'undefined' && LAP.loaded && !document.getElementById('page-laporan').classList.contains('hidden')) ? 'laporan' : 'hantar',
+    minggu: state.targetWeek,
+    mesej: mesej,
+    agent: (window.navigator && window.navigator.userAgent) || ''
+  };
+
+  withTimeout(serverCall('apiLaporMasalah', [laporan]), SLOW_SERVER_MS, SLOW_SERVER_MSG)
+    .then(function (res) {
+      if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal menghantar');
+      if (el.laporMsg) { el.laporMsg.className = 'msg good'; el.laporMsg.textContent = 'Terima kasih — laporan anda sudah sampai ke sekolah.'; }
+      if (el.laporMesej) el.laporMesej.value = '';
+    })
+    .catch(function (err) {
+      if (el.laporMsg) { el.laporMsg.className = 'msg bad'; el.laporMsg.textContent = 'Gagal menghantar: ' + err.message; }
+    })
+    .then(function () {
+      el.laporHantar.disabled = false;
+    });
+}
+
+if (el.btnLapor) el.btnLapor.addEventListener('click', function () { toggleLapor(true); });
+if (el.laporTutup) el.laporTutup.addEventListener('click', function () { toggleLapor(false); });
+if (el.laporHantar) el.laporHantar.addEventListener('click', hantarLapor);
 
 boot();

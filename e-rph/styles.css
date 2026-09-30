@@ -651,6 +651,62 @@ input.good { border-color: var(--green); background: var(--green-soft); }
    malar-lebar supaya lebar baris tidak bergetar antara v2.9 dan v2.31. */
 .foot-versi { font-variant-numeric: tabular-nums; }
 
+/* ---------- v42: alat footer + panel aduan + diagnostik pentadbir ---------- */
+
+/* Dua alat kecil di bawah baris footer. Pengguna mahu jalan masuk pentadbir
+   "不明显的在底部" - jadi ia kecil, kelabu, dan TIDAK menjadi butang yang
+   menarik mata. #btn-admin mula hidden dan hanya dibuka oleh app.js apabila
+   server berkata akaun ini pentadbir. */
+.foot-tools {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: .55;
+}
+
+.link-btn.tiny {
+  font-size: 11px;
+  padding: 2px 4px;
+  color: var(--muted);
+  text-decoration: underline;
+}
+
+.link-btn.tiny:hover { color: var(--ink, #1d2b3a); }
+
+/* Panel aduan: kad biasa di bawah footer, BUKAN dialog. Dialog menyekat
+   pemaparan dan itu pernah melumpuhkan portal ini. */
+.lapor {
+  max-width: 460px;
+  margin: 0 auto 18px;
+  text-align: left;
+}
+
+.lapor textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 14px;
+  padding: 10px 12px;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  resize: vertical;
+}
+
+/* Banner mod pentadbir: ungu, bukan warna mana-mana keadaan minggu - ia keadaan
+   IDENTITI, dan ia tidak boleh dikelirukan dengan "minggu lepas" atau "cuti". */
+.banner.admin {
+  background: #efe8ff;
+  color: #4a2b8c;
+  border-left: 5px solid #6b46c1;
+}
+
+/* Diagnostik: senarai sebab, jadi ia perlu boleh dibaca berbaris-baris. */
+.diag-body p { margin: 0 0 6px; font-size: 13.5px; }
+.diag-body p.bad  { color: var(--red); font-weight: 600; }
+.diag-body p.good { color: var(--green); font-weight: 600; }
+.diag-body ul { margin: 0 0 10px 18px; padding: 0; font-size: 13px; color: var(--muted); }
+.diag-body li { margin-bottom: 2px; }
+
 @media (max-width: 380px) {
   .card { padding: 18px 15px; }
   h2.big { font-size: 19px; }
@@ -830,6 +886,22 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   border: 1px solid #dde3ea;
   border-radius: 10px;
   background: #f7f9fb;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink, #1d2b3a);
+}
+
+/* v42: pemilih guru untuk pentadbir mengambil tempat nama itu. Tingginya sama
+   (padding 8px/13px + font 15px) supaya baris kawalan tidak berubah bentuk
+   apabila mod pentadbir dihidupkan - peraturan yang sama yang memadankan nama
+   guru dengan kotak Tahun. */
+#admin-guru {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 13px;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  background: #fff;
   font-weight: 700;
   font-size: 15px;
   color: var(--ink, #1d2b3a);
