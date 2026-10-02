@@ -64,8 +64,14 @@ var CONFIG = {
      sendiri, BERURUTAN, jadi saiz permintaan kekal kecil dan kegagalan separa
      boleh dilaporkan per fail. Pautan lama "kekalkan rekod sedia ada"
      (`#url` + `state.linkLama`) DIBUANG bersama perubahan ini: rekod kini
-     dicipta oleh failnya, jadi menghantar tanpa fail tiada maksud. */
-  VERSI: 'v2.49'
+     dicipta oleh failnya, jadi menghantar tanpa fail tiada maksud.
+
+     v50: tiada perubahan pada app.js - nombor ini naik bersama penjelasan
+     "Borang di bawah kekal terbuka …" pada kad "sudah hantar" yang DIBUANG dari
+     index.html atas permintaan pengguna (*"remove 'Borang di bawah kekal
+     terbuka …'"*). Nombor versi mesti naik bersama setiap deploy: footer ialah
+     satu-satunya cara guru tahu build mana yang sampai kepada mereka. */
+  VERSI: 'v2.50'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah

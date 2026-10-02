@@ -158,14 +158,17 @@
            sebaik sahaja minggu itu dihantar - guru yang mengajar lima mata
            pelajaran tidak dapat menghantar yang kedua. Permintaan pengguna
            (30 Sep 2026): "需要改成一星期可以提交很多次，可是同一个星期被计算为
-           一次". Ayat di bawah memberitahu guru borang itu memang masih terbuka,
-           kerana kad "sudah hantar" biasanya bermaksud sebaliknya. -->
+           一次".
+
+           v50: penjelasan panjang "Borang di bawah kekal terbuka — hantar lagi
+           untuk mata pelajaran lain …" DIBUANG atas permintaan pengguna
+           (*"remove 'Borang di bawah kekal terbuka …'"*). Ayat yang tinggal
+           ialah jalan MEMBETULKAN rekod, iaitu satu-satunya perkara pada kad ini
+           yang guru tidak dapat simpulkan sendiri: borang di bawah memang
+           kelihatan, dan subjek yang sudah ada memang kelihatan pada baris
+           "2 rekod: …" di atasnya. -->
       <p class="muted center small">
-        Borang di bawah kekal terbuka — hantar lagi untuk mata pelajaran lain
-        pada minggu yang sama. Kalau anda pilih fail dengan mata pelajaran yang
-        <strong>sudah ada</strong>, fail itu disimpan ke dalam
-        <strong>folder rekod</strong> yang sama, jadi satu rekod boleh membawa
-        RPH + RPT + bahan. Untuk membetulkan rekod, padamkannya pada halaman
+        Untuk membetulkan rekod, padamkannya pada halaman
         <strong>Laporan e-RPH</strong>, kemudian hantar semula.
       </p>
     </div>
@@ -466,9 +469,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.49',
+  versi: 'v2.50',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'bc5a38e',
+  build: '8b22bbb',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
