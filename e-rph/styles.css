@@ -527,11 +527,22 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   color: #fff;
 }
 
+/* v52: bebola "Cuti" menjadi KUNING dengan teks PUTIH - pengguna, 2 Okt 2026:
+   *"cuti 灰色-> 黄底白字"*. Kelabu itu (v34) mudah dikelirukan dengan minggu
+   HADAPAN, yang juga kelabu pucat dan rata - pada peta yang penuh, guru tidak
+   dapat membezakan "cuti" daripada "belum berlaku".
+
+   Kuning di sini ialah kuning EMAS yang cukup gelap untuk teks putih: kuning
+   cerah (#ffd700) dengan teks putih hanya ~1.3:1, jadi angka minggu itu hilang
+   terus. Corak tiga warnanya sama seperti .done/.miss - cerah di atas, asas di
+   tengah, gelap di tepi bawah - supaya bebola itu kekal kelihatan kaca, dan putih
+   pada #d99b06 ialah ~2.9:1, setanding dengan putih pada bebola hijau (#1a8f4c,
+   ~3.4:1). */
 .week-chip.cuti {
-  --chip-lite: #ffffff;
-  --chip-base: #f1f2f3;
-  --chip-dark: #d3d7db;
-  color: #b6bdc6;
+  --chip-lite: #f7c948;
+  --chip-base: #d99b06;
+  --chip-dark: #7a5600;
+  color: #fff;
 }
 /* .week-chip.now tiada peraturan di sini lagi: "minggu semasa" kini dibawa oleh
    WARNA BEBOLA, di bawah sekali bersama .sel (v31/v34). */
@@ -639,7 +650,10 @@ input.good { border-color: var(--green); background: var(--green-soft); }
    menjadi merah pepejal, titik pucat akan menerangkan sesuatu yang tidak wujud
    lagi pada skrin. */
 .dot.miss { background: var(--red); border: 1px solid #6d1414; }
-.dot.cuti { background: #f0f0f0; border: 1px solid #dcdcdc; }
+/* v52: titik legend mesti sepadan dengan bebola yang dirujuknya (peraturan yang
+   sama seperti .dot.miss pada v51) - titik kelabu akan menerangkan warna yang
+   tidak ada lagi pada peta. */
+.dot.cuti { background: #d99b06; border: 1px solid #7a5600; }
 
 /* ---------- Siap ---------- */
 

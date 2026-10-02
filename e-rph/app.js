@@ -76,8 +76,13 @@ var CONFIG = {
      (*"红色的minggu不明显"*, kemudian *"要红底白字"*). Sebelum ini badannya
      `--red-soft` (#fdecec) dengan teks merah, dan pada kad putih - dengan kilau
      putih di atasnya - bebola itu membaca sebagai putih. Tiada perubahan pada
-     app.js sendiri; nombor ini naik bersama styles.css. */
-  VERSI: 'v2.51'
+     app.js sendiri; nombor ini naik bersama styles.css.
+
+     v52: bebola minggu "Cuti" menjadi KUNING dengan teks PUTIH (*"cuti 灰色->
+     黄底白字"*). Kelabu v34 mudah dikelirukan dengan minggu HADAPAN, yang juga
+     kelabu pucat dan rata. Tiada perubahan pada app.js sendiri; nombor ini naik
+     bersama styles.css. */
+  VERSI: 'v2.52'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
