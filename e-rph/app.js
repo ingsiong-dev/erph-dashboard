@@ -70,8 +70,14 @@ var CONFIG = {
      "Borang di bawah kekal terbuka …" pada kad "sudah hantar" yang DIBUANG dari
      index.html atas permintaan pengguna (*"remove 'Borang di bawah kekal
      terbuka …'"*). Nombor versi mesti naik bersama setiap deploy: footer ialah
-     satu-satunya cara guru tahu build mana yang sampai kepada mereka. */
-  VERSI: 'v2.50'
+     satu-satunya cara guru tahu build mana yang sampai kepada mereka.
+
+     v51: bebola minggu "Belum" menjadi MERAH PEPEJAL dengan teks PUTIH
+     (*"红色的minggu不明显"*, kemudian *"要红底白字"*). Sebelum ini badannya
+     `--red-soft` (#fdecec) dengan teks merah, dan pada kad putih - dengan kilau
+     putih di atasnya - bebola itu membaca sebagai putih. Tiada perubahan pada
+     app.js sendiri; nombor ini naik bersama styles.css. */
+  VERSI: 'v2.51'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah

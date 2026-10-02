@@ -509,11 +509,22 @@ input.good { border-color: var(--green); background: var(--green-soft); }
   color: #fff;
 }
 
+/* v51: bebola "Belum" (minggu yang sepatutnya sudah dihantar, tetapi belum)
+   terlalu pucat - pengguna, 2 Okt 2026: *"红色的minggu不明显"*. Sebelum ini
+   badannya `--red-soft` (#fdecec) dengan teks merah: pada latar putih kad, dengan
+   kilau putih di atasnya, bebola itu membaca sebagai PUTIH, dan satu-satunya
+   petunjuk yang tinggal ialah angka merah kecil - pada telefon itu hilang.
+
+   Sekarang ia bebola MERAH PEPEJAL, sepadan dengan cara .done menjadi bebola
+   hijau pepejal: tiga warna yang sama coraknya (cerah / asas / gelap) dengan teks
+   putih. Maksudnya tidak berubah - hijau = selesai, merah = belum - dan kini
+   kedua-duanya sama kuat, jadi guru nampak kerja yang tertinggal, bukan hanya
+   kerja yang siap. */
 .week-chip.miss {
-  --chip-lite: #ffffff;
-  --chip-base: var(--red-soft);
-  --chip-dark: #e6b0b0;
-  color: var(--red);
+  --chip-lite: #f08a8a;
+  --chip-base: var(--red);
+  --chip-dark: #6d1414;
+  color: #fff;
 }
 
 .week-chip.cuti {
@@ -623,7 +634,11 @@ input.good { border-color: var(--green); background: var(--green-soft); }
    sebelah bebola kelihatan seperti peninggalan reka bentuk lama. */
 .dot { width: 11px; height: 11px; border-radius: 50%; display: inline-block; }
 .dot.done { background: var(--green); }
-.dot.miss { background: var(--red-soft); border: 1px solid #f0c4c4; }
+/* v51: titik legend mesti sepadan dengan bebola yang dirujuknya. Sebelum ini ia
+   `--red-soft` + sempadan pucat, iaitu warna bebola LAMA - selepas bebola itu
+   menjadi merah pepejal, titik pucat akan menerangkan sesuatu yang tidak wujud
+   lagi pada skrin. */
+.dot.miss { background: var(--red); border: 1px solid #6d1414; }
 .dot.cuti { background: #f0f0f0; border: 1px solid #dcdcdc; }
 
 /* ---------- Siap ---------- */
