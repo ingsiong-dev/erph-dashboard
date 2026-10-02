@@ -162,8 +162,11 @@
            kerana kad "sudah hantar" biasanya bermaksud sebaliknya. -->
       <p class="muted center small">
         Borang di bawah kekal terbuka — hantar lagi untuk mata pelajaran lain
-        pada minggu yang sama. Untuk membetulkan rekod, padamkannya pada
-        halaman <strong>Laporan e-RPH</strong>, kemudian hantar semula.
+        pada minggu yang sama. Kalau anda pilih fail dengan mata pelajaran yang
+        <strong>sudah ada</strong>, fail itu disimpan ke dalam
+        <strong>folder rekod</strong> yang sama, jadi satu rekod boleh membawa
+        RPH + RPT + bahan. Untuk membetulkan rekod, padamkannya pada halaman
+        <strong>Laporan e-RPH</strong>, kemudian hantar semula.
       </p>
     </div>
 
@@ -186,6 +189,14 @@
                placeholder="Taip mata pelajaran" autocomplete="off"
                autocapitalize="words">
         <datalist id="senarai-subjek"></datalist>
+        <!-- v49: menjelaskan peranan medan ini selepas senarai fail muncul.
+             Guru mesti tahu ia LALAI untuk fail yang baru dipilih, dan setiap
+             baris fail mempunyai pemilihnya sendiri - tanpa ayat ini, menukar
+             medan utama selepas memilih fail kelihatan seolah-olah ia menukar
+             semua baris (ia tidak, dan itu disengajakan: lihat
+             syncSubjekFail() dalam app.js). -->
+        <p class="hint" id="subject-hint">Mata pelajaran ini dipakai untuk fail
+          yang baru dipilih. Setiap fail di bawah boleh ditukar sendiri.</p>
       </div>
 
       <div class="field">
@@ -194,24 +205,34 @@
              kelihatan seperti butang yang membukanya. Sebab: kawalan asal
              pelayar memaparkan teks Bahasa INGGERIS ("Choose File" /
              "No file chosen") yang tidak boleh diterjemah melalui CSS, jadi
-             ia bercanggah dengan seluruh halaman. -->
-        <input id="rph-file" type="file" class="file-input"
+             ia bercanggah dengan seluruh halaman.
+
+             v49: `multiple` - satu pemilihan boleh membawa BEBERAPA fail
+             (*"让老师可以一次交多本文件"*). Setiap fail menjadi satu baris di
+             bawah dengan mata pelajarannya sendiri; baris yang berkongsi mata
+             pelajaran menjadi SATU rekod (pelayan menambah pautan pada baris
+             rekod itu, jadi satu rekod boleh membawa RPH + RPT + bahan).
+
+             `accept` SENGAJA tidak ditambah dengan nilai baharu: ia hanya
+             menapis pemilih fail, dan fail yang tidak disenaraikan masih boleh
+             dipilih melalui "Semua fail" - jadi ia tidak pernah menjadi kunci. -->
+        <input id="rph-file" type="file" class="file-input" multiple
                accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt,.jpg,.jpeg,.png,.heic">
         <label for="rph-file" class="file-btn" id="rph-file-btn">Pilih fail RPH…</label>
-        <p class="hint" id="file-hint">Pilih fail RPH daripada komputer atau telefon anda.</p>
-        <div class="chosen hidden" id="file-chosen">
-          <span class="chosen-name" id="file-name">—</span>
-          <button class="link-btn danger" id="file-clear" type="button">Buang</button>
-        </div>
+        <p class="hint" id="file-hint">Pilih SATU ATAU LEBIH fail RPH daripada komputer atau telefon anda - setiap fail boleh diberi mata pelajaran sendiri.</p>
+
+        <!-- Senarai fail yang dipilih. Setiap baris: nama fail + saiz, satu
+             <select> mata pelajaran, dan butang Buang. Dibina oleh renderFail()
+             dalam app.js; markup ini sengaja KOSONG supaya tiada dua sumber
+             kebenaran. -->
+        <div class="fail-senarai" id="fail-senarai"></div>
       </div>
 
-      <!-- Pautan tidak lagi ditaip oleh guru.
-           Fail di atas dimuat naik ke Drive SEKOLAH dan pautannya dijana
-           automatik - sama seperti borang Google yang digantikan. Medan ini
-           kekal HIDDEN kerana ia membawa pautan rekod sedia ada semasa
-           mengemas kini, supaya menyimpan semula tanpa fail baharu tidak
-           memadamkan pautan asal. -->
-      <input id="url" type="hidden">
+      <!-- v49: medan tersembunyi #url DIBUANG bersama aliran "kekalkan pautan
+           rekod sedia ada". Rekod kini dicipta oleh failnya sendiri (satu rekod
+           = satu minggu + satu mata pelajaran), dan menambah fail pada rekod
+           yang sudah ada dibuat oleh pelayan - pelayar tidak perlu membawa
+           pautan lama ke mana-mana. -->
 
       <!-- v29: kawalan "Pilih minggu lain…" DIBUANG. Pemilihnya kini ialah peta
            kemajuan di bawah - klik nombor minggu itu sendiri. Permintaan
@@ -445,9 +466,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.46',
+  versi: 'v2.49',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: '7997f19',
+  build: 'bc5a38e',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never

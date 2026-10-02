@@ -41,8 +41,31 @@ var CONFIG = {
      (penolakan dikelaskan mengikut kod [E1]-[E5]).
 
      v46: butang/panel "Lapor masalah" DIBUANG (markup, kod, CSS, shim, laluan
-     dan endpoint server) - nombor ini naik bersama dua front end itu. */
-  VERSI: 'v2.46'
+     dan endpoint server) - nombor ini naik bersama dua front end itu.
+
+     v47: emel "Document shared with you" pada setiap muat naik DIBUANG
+     (kongsi melalui Drive API dengan sendNotificationEmail=false; addViewer()
+     hanya jaring keselamatan). Tiada perubahan pada app.js sendiri - nombor ini
+     naik bersama SERVER sahaja.
+
+     v48: `?action=whoami` melaporkan `kongsiSenyap` ("ya"/"TIDAK"). Tanpa itu
+     tiada cara mengesahkan pembetulan v47 pada deployment sebenar: `?action=diag`
+     berkunci sejak v19 (ia selepas assertAllowed_()), dan kegagalan kongsi
+     senyap hanya kelihatan di peti masuk guru. Nombor ini naik bersama SERVER
+     sahaja sekali lagi.
+
+     v49: SATU PENGHANTARAN MEMBAWA BANYAK FAIL (*"让老师可以一次交多本文件"*,
+     1 Okt 2026). Guru memilih beberapa fail sekali gus; setiap fail menjadi satu
+     baris dengan mata pelajarannya SENDIRI, dan baris yang berkongsi mata
+     pelajaran disimpan ke dalam SATU folder Drive rekod itu
+     (*"自动建文件夹。laporan打开文件夹。这样就不会因为多文件变多link"*) - jadi
+     lajur URL dalam sheet tetap membawa SATU pautan bagi setiap rekod, dan
+     halaman Laporan membuka folder itu. Setiap fail dihantar dalam panggilan API
+     sendiri, BERURUTAN, jadi saiz permintaan kekal kecil dan kegagalan separa
+     boleh dilaporkan per fail. Pautan lama "kekalkan rekod sedia ada"
+     (`#url` + `state.linkLama`) DIBUANG bersama perubahan ini: rekod kini
+     dicipta oleh failnya, jadi menghantar tanpa fail tiada maksud. */
+  VERSI: 'v2.49'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -89,81 +112,20 @@ function expectedWeeks() {
 }
 
 /* ============================================================
-   3. PENORMALAN PAUTAN  ← bahagian paling penting untuk elak silap
-   ============================================================ */
+   3. (nombor 3 dibuang bersama parseLink)
+   ------------------------------------------------------------
+   v11-v48 menormalkan pautan yang GURU TAMPAL di sini: parseLink() mengubah
+   apa-apa bentuk pautan Drive menjadi pautan 'view' yang bersih, menolak pautan
+   folder, dan memberi amaran tentang hos bukan Google. v49 membuangnya bersama
+   medan pautan itu sendiri (*"自动建文件夹。laporan打开文件夹。这样就不会因为多文件
+   变多link"*): guru tidak lagi menampal pautan - dia memilih fail, dan PELAYAN
+   menyimpannya ke dalam folder rekod. URL yang masuk ke lajur sheet kini
+   dijana sepenuhnya di server (DriveApp folder.getUrl()), jadi tiada pautan
+   yang perlu dinormalkan di pelayar.
 
-/**
- * Terima apa sahaja yang pengguna tampal, keluarkan pautan fail yang bersih.
- * @return {{ok?:boolean, url?:string, id?:string, error?:string, warn?:string}}
- */
-function parseLink(raw) {
-  var s = String(raw || '').trim();
-  if (!s) return { error: 'Sila tampal pautan RPH.' };
-
-  /* Buang teks tambahan — ambil URL pertama sahaja */
-  var found = s.match(/https?:\/\/[^\s<>"']+/i);
-  if (found) {
-    s = found[0];
-  } else if (/^(drive|docs)\.google\.com\//i.test(s)) {
-    s = 'https://' + s;
-  } else {
-    return { error: 'Pautan mesti bermula dengan https://' };
-  }
-
-  var u;
-  try { u = new URL(s); } catch (e) { return { error: 'Pautan tidak sah.' }; }
-
-  var host = u.hostname.toLowerCase().replace(/^www\./, '');
-
-  /* Folder = pasti salah */
-  if (/\/drive\/(u\/\d+\/)?folders\//.test(u.pathname)) {
-    return { error: 'Ini pautan FOLDER, bukan fail. Buka fail RPH anda, ' +
-                    'kemudian salin pautan FAIL itu.' };
-  }
-
-  if (host !== 'drive.google.com' && host !== 'docs.google.com') {
-    return {
-      warn: 'Pautan ini bukan daripada Google Drive. Pastikan pengetua boleh membukanya.',
-      url: s, id: ''
-    };
-  }
-
-  /* Cari ID fail */
-  var id = '', m;
-  if ((m = u.pathname.match(/\/file\/d\/([A-Za-z0-9_-]{15,})/)))            id = m[1];
-  else if ((m = u.pathname.match(/\/document\/d\/([A-Za-z0-9_-]{15,})/)))     id = m[1];
-  else if ((m = u.pathname.match(/\/spreadsheets\/d\/([A-Za-z0-9_-]{15,})/))) id = m[1];
-  else if ((m = u.pathname.match(/\/presentation\/d\/([A-Za-z0-9_-]{15,})/))) id = m[1];
-  else if (u.searchParams.get('id'))                                          id = u.searchParams.get('id');
-
-  /* Sahkan BENTUK id, bukan sekadar "ada id".
-     Corak laluan di atas sudah menuntut 15+ aksara, tetapi ?id= menerima apa
-     sahaja - jadi "?id=x" sebelum ini "dinormalkan" menjadi pautan yang
-     kelihatan sah dan kemudian disimpan. Sekarang ia ditolak. */
-  if (id && !/^[A-Za-z0-9_-]{15,}$/.test(id)) id = '';
-
-  if (!id) {
-    return { warn: 'Pautan ini tidak dapat dikenal pasti sebagai satu fail. ' +
-                   'Pastikan ia pautan fail, bukan senarai fail.',
-             url: s, id: '' };
-  }
-
-  /* Tukar kepada pautan 'view' yang bersih */
-  var canonical;
-  if (host === 'docs.google.com') {
-    var kind = /\/document\//.test(u.pathname)     ? 'document'
-             : /\/spreadsheets\//.test(u.pathname) ? 'spreadsheets'
-             : /\/presentation\//.test(u.pathname) ? 'presentation'
-             : null;
-    canonical = kind
-      ? 'https://docs.google.com/' + kind + '/d/' + id + '/view'
-      : 'https://drive.google.com/file/d/' + id + '/view';
-  } else {
-    canonical = 'https://drive.google.com/file/d/' + id + '/view';
-  }
-
-  return { ok: true, url: canonical, id: id };
-}
+   Penomboran seksyen ini SENGAJA tidak diubah semula: nombor 4..12 dipakai oleh
+   banyak komen, dan menomborkan semula fail ini akan menjadikan setiap rujukan
+   itu salah tanpa sebab. */
 
 /* ============================================================
    4. DOM
@@ -195,10 +157,9 @@ var el = {
   file: $('rph-file'),
   fileBtn: $('rph-file-btn'),
   fileHint: $('file-hint'),
-  fileChosen: $('file-chosen'),
-  fileName: $('file-name'),
-  fileClear: $('file-clear'),
-  url: $('url'),          /* hidden: membawa pautan rekod sedia ada semasa kemas kini */
+  /* v49: senarai fail menggantikan satu baris "fail dipilih" (file-chosen /
+     file-name / file-clear) dan medan tersembunyi #url. */
+  failSenarai: $('fail-senarai'),
   summary: $('summary'),
   btnSubmit: $('btn-submit'),
   msg: $('msg'),
@@ -247,8 +208,12 @@ var state = {
   adminOn: false,
   adminGuruList: [],    // senarai DELIMA (hanya diambil dalam mod pentadbir)
   adminGuru: null,      // {nama, email} guru yang sedang dilihat / diwakili
-  file: null,           // fail RPH yang dipilih (objek File), atau null
-  linkLama: '',         // pautan rekod sedia ada, dikekalkan kalau tiada fail baharu
+  /* v49: fail yang dipilih guru - SATU baris bagi setiap fail, dengan mata
+     pelajarannya sendiri: [{ id, fail, subjek, pakaiUtama }]. Reka bentuk lama
+     menyimpan SATU fail (state.file) ditambah pautan rekod lama
+     (state.linkLama); kedua-duanya dibuang bersama ciri "kemas kini tanpa muat
+     naik", kerana rekod kini dicipta oleh failnya. */
+  failSenarai: [],
   sending: false
 };
 
@@ -499,8 +464,8 @@ function renderSend() {
   renderAdmin();         /* v42: banner "mod pentadbir" ikut keadaan yang sama */
   renderSubjects();
   renderAlready();
-  renderFile();          /* mesti di sini juga: ia bergantung pada state.file
-                            dan state.linkLama, yang berubah mengikut minggu */
+  renderFail();          /* mesti di sini juga: ia bergantung pada senarai fail
+                            yang dipilih dan pada rekod minggu ini */
   renderSummary();
   renderProgress();
 }
@@ -626,27 +591,15 @@ function renderSubjects() {
   addOption(el.subject, '', '— Pilih mata pelajaran —');
 
   /* Subjek guru INI sahaja: rekod minggu ini dahulu (kalau ada), kemudian
-     sejarahnya sendiri, terbaru dahulu. Senarai datang daripada apiMe, yang
-     ditapis pada email pemanggil di server - jadi guru lain tidak pernah
-     melihat subjek guru lain.
+     sejarahnya sendiri, terbaru dahulu. Senarai itu dikongsi dengan setiap
+     baris fail (senaraiSubjekSendiri, v49) supaya kedua-duanya tidak boleh
+     menyimpang. Ia datang daripada apiMe, yang ditapis pada email pemanggil di
+     server - jadi guru lain tidak pernah melihat subjek guru lain.
 
      v41: SEMUA subjek minggu ini disenaraikan, bukan hanya rekod terakhir -
-     satu minggu kini menyimpan satu rekod bagi setiap mata pelajaran, dan
-     senarai itu ialah cara guru memilih yang mana satu untuk dihantar pula. */
-  var sendiri = [];
-  var dariMinggu = state.subjekMinggu.slice();
-  if (state.record && state.record.subject &&
-      dariMinggu.indexOf(state.record.subject) === -1) {
-    dariMinggu.push(state.record.subject);
-  }
-  dariMinggu.forEach(function (s) {
-    if (sendiri.indexOf(s) === -1) sendiri.push(s);
-  });
-  state.mySubjects.forEach(function (s) {
-    if (sendiri.indexOf(s) === -1) sendiri.push(s);
-  });
-
-  sendiri.forEach(function (s) { addOption(el.subject, s, s); });
+     satu minggu menyimpan satu rekod bagi setiap mata pelajaran, dan senarai
+     itu ialah cara guru memilih yang mana satu untuk dihantar pula. */
+  senaraiSubjekSendiri().forEach(function (s) { addOption(el.subject, s, s); });
 
   /* Tanpa ini, guru yang BELUM PERNAH menghantar tidak mempunyai satu pilihan
      pun - dan satu-satunya medan wajib itu menjadi jalan mati. */
@@ -768,21 +721,44 @@ function renderAlready() {
 
   el.alreadyWeek.textContent = 'Minggu ' + state.targetWeek;
 
-  /* Senarai subjek minggu ini; `record.subject` sebagai jaring keselamatan
-     untuk pelayan lama yang belum menghantar subjekMinggu. */
+  /* Senarai rekod minggu ini; `record.subject` sebagai jaring keselamatan
+     untuk pelayan lama yang belum menghantar subjekMinggu.
+
+     v49: setiap rekod ialah SATU FOLDER Drive (RPH + RPT + bahan di dalamnya),
+     jadi kad ini menyenaraikan subjek sahaja - bilangan fail dibaca dengan
+     membuka folder itu dari halaman Laporan, bukan dikira di sini (ia
+     memerlukan satu panggilan Drive bagi setiap rekod). */
   var senarai = state.subjekMinggu.slice();
-  if (!senarai.length && state.record.subject) senarai = [state.record.subject];
+  if (!senarai.length && state.record && state.record.subject) {
+    senarai = [state.record.subject];
+  }
 
   var bil = state.bilRekodMinggu || senarai.length || 1;
   el.alreadySubject.textContent = bil + ' rekod' +
     (senarai.length ? ': ' + senarai.join(' · ') : '');
 }
 
-/* --- 10e. Fail RPH (menggantikan medan pautan) ---
-   Guru tidak lagi menaip pautan. Dia memilih fail; pelayan menyimpannya ke
-   Drive sekolah dan menjana pautannya - sama seperti borang Google lama. */
+/* --- 10e. Fail RPH - SENARAI fail (v49) ---
+   Guru tidak lagi menaip pautan, dan tidak lagi terhad kepada SATU fail.
+   Permintaan pengguna (1 Okt 2026): *"让老师可以一次交多本文件"* - dia memilih
+   BEBERAPA fail sekali gus; setiap fail menjadi satu baris di bawah dengan mata
+   pelajarannya SENDIRI, jadi satu penghantaran boleh merangkumi beberapa mata
+   pelajaran (A) DAN beberapa fail bagi satu mata pelajaran (B).
 
-var MAX_FAIL_MB = 10;
+   Baris yang berkongsi mata pelajaran menjadi SATU rekod: pelayan menambahkan
+   pautan pada baris rekod yang sudah ada (submitUntuk_ v49), jadi satu rekod
+   membawa RPH + RPT + bahan.
+
+   Kenapa SATU permintaan bagi setiap fail, bukan satu permintaan besar:
+     - had permintaan Apps Script: 8 fail x 10 MB sebagai base64 ialah ~107 MB
+       dalam satu permintaan - jauh melebihi siling, dan kegagalannya tidak
+       dapat dipulihkan separuh jalan;
+     - kegagalan separa boleh dilaporkan PER FAIL: guru hanya mencuba semula
+       fail yang gagal, bukan memilih semula kesemuanya. */
+
+var MAX_FAIL_MB = 10;        /* had satu fail - sama dengan CONFIG.MAX_UPLOAD_MB */
+var MAX_FAIL_HANTAR = 8;     /* had satu penghantaran (satu tekan HANTAR RPH) */
+var MAX_FAIL_REKOD = 6;      /* had satu rekod - sama dengan CONFIG.MAX_FAIL_REKOD */
 
 function saizMb(bait) {
   var mb = Number(bait || 0) / 1048576;
@@ -806,82 +782,208 @@ function bacaFailBase64(fail) {
   });
 }
 
-/* Kosongkan pilihan fail. Input fail juga ditetapkan semula supaya fail yang
+/* Kunci mata pelajaran: huruf kecil, ruang tepi dibuang.
+   Peraturan yang SAMA dipakai pelayan (submitUntuk_, deleteUntuk_,
+   laporanGuru_), jadi "BM" dan "bm " ialah SATU rekod di kedua-dua pihak.
+   Kalau pelanggan mengira dua kumpulan dan pelayan menulisnya sebagai satu,
+   guru akan melihat bilangan rekod yang berbeza daripada yang disimpannya. */
+function kunciSubjek(s) { return String(s == null ? '' : s).trim().toLowerCase(); }
+
+/* Nombor unik bagi setiap baris fail. Ia dipakai untuk mencari baris yang
+   GAGAL selepas penghantaran (dan bukan indeks array, yang beralih apabila
+   baris berjaya dibuang). */
+var _failId = 0;
+
+/* Kosongkan senarai fail. Input fail juga ditetapkan semula supaya fail yang
    SAMA boleh dipilih semula - pelayar tidak mencetuskan 'change' kalau nilai
    input tidak berubah. */
 function resetFile() {
-  state.file = null;
-  state.linkLama = '';
-  el.url.value = '';
+  state.failSenarai = [];
   if (el.file) el.file.value = '';
-  renderFile();
+  renderFail();
 }
 
-function renderFile() {
-  var f = state.file;
-
-  /* Butang membuka pemilih fail menukar teks supaya guru tahu dia boleh
-     menggantikan fail, bukan hanya menambah satu lagi. */
-  if (el.fileBtn) el.fileBtn.textContent = f ? 'Tukar fail RPH…' : 'Pilih fail RPH…';
-
-  if (f) {
-    el.fileChosen.classList.remove('hidden');
-    el.fileName.textContent = f.name + ' · ' + saizMb(f.size);
-    el.fileClear.classList.remove('hidden');
-    el.fileHint.className = 'hint good';
-    el.fileHint.textContent = '✓ Fail akan dimuat naik dan disimpan oleh sekolah.';
-    return;
-  }
-
-  el.fileClear.classList.add('hidden');
-
-  if (state.linkLama) {
-    el.fileChosen.classList.remove('hidden');
-    el.fileName.textContent = 'Fail sedia ada dikekalkan';
-    el.fileHint.className = 'hint';
-    el.fileHint.textContent = 'Pilih fail baharu untuk menggantikannya, atau ' +
-                              'biarkan kosong untuk mengekalkan fail asal.';
-    return;
-  }
-
-  el.fileChosen.classList.add('hidden');
-  el.fileName.textContent = '';
-  el.fileHint.className = 'hint';
-  el.fileHint.textContent = 'Pilih fail RPH daripada komputer atau telefon anda.';
+/* Subjek lalai bagi baris BAHARU: medan utama pada masa fail itu dipilih.
+   Ia boleh KOSONG (guru belum pilih apa-apa) - baris itu kemudian mengikut
+   medan utama sehingga ia diisi, lihat syncSubjekFail(). */
+function tambahFail(fail) {
+  state.failSenarai.push({
+    id: 'f' + (++_failId),
+    fail: fail,
+    subjek: subjectValue()
+  });
 }
 
-/* Had saiz disemak DI SINI supaya guru tahu serta-merta - bukan selepas
-   menunggu muat naik yang akan gagal. */
-function pilihFail(fail) {
-  state.file = null;
-
-  if (!fail) { renderFile(); return; }
-
+/* Terima senarai File daripada <input type="file" multiple>.
+   Setiap fail disemak DI SINI supaya guru tahu serta-merta - bukan selepas
+   menunggu muat naik yang akan gagal. Fail yang ditolak tidak menggagalkan
+   yang lain: satu fail 20 MB tidak sepatutnya membatalkan tujuh yang sah. */
+function pilihFailSenarai(senarai) {
   var had = MAX_FAIL_MB * 1048576;
+  var tolak = [];
+  var masuk = 0;
 
-  if (!fail.size) {
-    if (el.file) el.file.value = '';
-    renderFile();
-    el.fileHint.className = 'hint bad';
-    el.fileHint.textContent = '✕ Fail itu kosong.';
-    return;
-  }
+  Array.prototype.slice.call(senarai || []).forEach(function (f) {
+    if (!f) return;
 
-  if (fail.size > had) {
-    if (el.file) el.file.value = '';
-    renderFile();
-    el.fileHint.className = 'hint bad';
-    el.fileHint.textContent = '✕ Fail ini ' + saizMb(fail.size) + ' — had ialah ' +
-                              MAX_FAIL_MB + ' MB. Sila pilih fail yang lebih kecil.';
-    return;
-  }
+    if (state.failSenarai.length >= MAX_FAIL_HANTAR) {
+      tolak.push(f.name + ' — had ' + MAX_FAIL_HANTAR + ' fail setiap penghantaran');
+      return;
+    }
+    if (!f.size) { tolak.push(f.name + ' — fail kosong'); return; }
+    if (f.size > had) {
+      tolak.push(f.name + ' — ' + saizMb(f.size) + ', had ' + MAX_FAIL_MB + ' MB');
+      return;
+    }
 
-  state.file = fail;
-  /* Fail baharu mengalahkan pautan rekod lama. */
-  state.linkLama = '';
-  el.url.value = '';
-  renderFile();
+    /* Fail yang SAMA dipilih dua kali = satu baris sahaja. Nama + saiz + masa
+       ubah suai sudah cukup untuk mengenalinya. */
+    var sudah = state.failSenarai.some(function (r) {
+      return r.fail && r.fail.name === f.name && r.fail.size === f.size &&
+             r.fail.lastModified === f.lastModified;
+    });
+    if (sudah) { tolak.push(f.name + ' — sudah ada dalam senarai'); return; }
+
+    tambahFail(f);
+    masuk++;
+  });
+
+  if (el.file) el.file.value = '';   /* supaya fail yang SAMA boleh dipilih semula */
+  renderFail();
   renderSummary();
+
+  if (tolak.length) {
+    el.fileHint.className = 'hint bad';
+    el.fileHint.textContent = '✕ ' + tolak.join(' · ');
+  } else if (masuk) {
+    el.fileHint.className = 'hint good';
+    el.fileHint.textContent = '✓ ' + state.failSenarai.length +
+                              ' fail sedia untuk dihantar.';
+  }
+
+  return masuk;
+}
+
+function buangFail(id) {
+  state.failSenarai = state.failSenarai.filter(function (r) { return r.id !== id; });
+  renderFail();
+  renderSummary();
+}
+
+/* Senarai mata pelajaran yang ditawarkan kepada guru: rekod minggu ini dahulu,
+   kemudian sejarahnya sendiri, terbaru dahulu. Dikongsi oleh medan utama
+   (#subject) dan oleh setiap baris fail - dua senarai yang berbeza akan
+   membenarkan guru memilih subjek pada satu baris yang tidak ada pada yang
+   lain, dan itu hanya mengelirukan. */
+function senaraiSubjekSendiri() {
+  var sendiri = [];
+  var dariMinggu = state.subjekMinggu.slice();
+
+  if (state.record && state.record.subject &&
+      dariMinggu.indexOf(state.record.subject) === -1) {
+    dariMinggu.push(state.record.subject);
+  }
+
+  dariMinggu.forEach(function (s) { if (sendiri.indexOf(s) === -1) sendiri.push(s); });
+  state.mySubjects.forEach(function (s) { if (sendiri.indexOf(s) === -1) sendiri.push(s); });
+
+  return sendiri;
+}
+
+/* Isi satu <select> subjek bagi SATU BARIS FAIL.
+   ⚠ Ia SENGAJA tidak menawarkan pilihan "Lain-lain…": kotak taip bebas hanya
+   wujud untuk medan utama (#subject-lain). Kalau satu baris boleh memilih
+   "Lain-lain", nilai baris itu menjadi sentinela `__LAIN__` - dan sentinela itu
+   akan dihantar sebagai nama mata pelajaran yang sebenar. Subjek baharu
+   diperkenalkan melalui medan utama (taip di sana), kemudian baris yang dipilih
+   selepas itu mewarisinya. */
+function isiPilihanSubjek(select, nilaiDipilih) {
+  select.innerHTML = '';
+  addOption(select, '', '— Pilih mata pelajaran —');
+
+  senaraiSubjekSendiri().forEach(function (s) { addOption(select, s, s); });
+
+  var v = String(nilaiDipilih == null ? '' : nilaiDipilih);
+  var ada = false;
+  Array.prototype.forEach.call(select.options, function (o) {
+    if (v && o.value === v) ada = true;
+  });
+
+  if (ada) {
+    select.value = v;
+  } else if (v) {
+    /* Subjek yang diwarisi daripada medan utama tidak ada dalam senarai guru
+       (contohnya subjek yang baru ditaip): tambah sebagai pilihan sendiri supaya
+       nilainya TIDAK hilang semasa melukis semula. Nilai itu memang sah -
+       pelayan menerima apa-apa teks. */
+    addOption(select, v, v);
+    select.value = v;
+  } else {
+    select.value = '';
+  }
+}
+
+/* Lukis semula senarai fail + petunjuknya. Dipanggil pada setiap perubahan
+   (fail ditambah/dibuang, subjek ditukar, minggu bertukar). */
+function renderFail() {
+  var senarai = state.failSenarai;
+
+  if (el.fileBtn) {
+    el.fileBtn.textContent = senarai.length ? 'Tambah fail RPH…' : 'Pilih fail RPH…';
+  }
+
+  if (el.failSenarai) {
+    el.failSenarai.innerHTML = '';
+
+    if (senarai.length) {
+      var frag = document.createDocumentFragment();
+      var bilRekod = kumpulanMengikutSubjek(senarai).length;
+
+      senarai.forEach(function (r) {
+        var row = document.createElement('div');
+        row.className = 'fail-row';
+        row.dataset.id = r.id;
+
+        var nama = document.createElement('div');
+        nama.className = 'fail-nama';
+        /* Nama + saiz dalam SATU nod teks: saiz ialah sebahagian daripada label
+           fail itu, dan satu nod bermakna pemilih fail telefon (yang memotong
+           teks panjang) tidak boleh memotong saiznya ke baris yang berasingan. */
+        nama.textContent = r.fail.name + ' · ' + saizMb(r.fail.size);
+        nama.title = r.fail.name;
+
+        var sel = document.createElement('select');
+        sel.className = 'fail-subjek';
+        sel.setAttribute('aria-label', 'Mata pelajaran bagi ' + r.fail.name);
+        isiPilihanSubjek(sel, r.subjek);
+
+        var buang = document.createElement('button');
+        buang.type = 'button';
+        buang.className = 'link-btn danger fail-buang';
+        buang.dataset.buang = r.id;
+        buang.textContent = 'Buang';
+
+        row.appendChild(nama);
+        row.appendChild(sel);
+        row.appendChild(buang);
+        frag.appendChild(row);
+      });
+
+      el.failSenarai.appendChild(frag);
+
+      el.fileHint.className = 'hint';
+      el.fileHint.textContent = senarai.length + ' fail · ' + bilRekod +
+        ' folder rekod akan disimpan (fail yang sama mata pelajaran masuk ke ' +
+        'folder yang sama).' +
+        (senarai.length < MAX_FAIL_HANTAR ? ' Boleh tambah lagi.' : '');
+      return;
+    }
+  }
+
+  el.fileHint.className = 'hint';
+  el.fileHint.textContent = 'Pilih SATU ATAU LEBIH fail RPH daripada komputer atau ' +
+                            'telefon anda - setiap fail boleh diberi mata pelajaran ' +
+                            'sendiri.';
 }
 
 /* --- 10f. Ringkasan sebelum hantar --- */
@@ -898,26 +1000,54 @@ function guruRingkasan() {
 /* v32: tiga teks ini ialah LABEL dalam jadual, bukan pertengahan ayat - jadi
    huruf besar pada perkataan pertama ("belum" -> "Belum", permintaan pengguna).
    Ayat penuh di tempat lain (cth. "Sesi belum bermula.") kekal seperti adanya. */
-function renderSummary() {
-  var subject = subjectValue();
-  var f = state.file;
+/* Kumpulkan baris fail mengikut mata pelajaran - SATU kumpulan = SATU rekod
+   (week + subjek) yang akan ditulis. Susunan mengekalkan susunan guru memilih
+   fail, jadi ringkasan tidak "melompat" selepas setiap perubahan.
+   ⚠ Peraturan kunci yang SAMA ada di server (submitUntuk_): kalau kedua-duanya
+   tidak sepadan, ringkasan akan menjanjikan bilangan rekod yang berbeza
+   daripada yang sebenarnya disimpan. */
+function kumpulanMengikutSubjek(senarai) {
+  var kumpulan = [];
+  var ikut = {};
 
-  var failTeks;
-  if (f) {
-    failTeks = escapeHtml(f.name) +
-               ' <span class="muted">(' + saizMb(f.size) + ')</span>';
-  } else if (state.linkLama) {
-    failTeks = '<span class="muted">Fail sedia ada dikekalkan</span>';
-  } else {
-    failTeks = '<span class="muted">Belum dipilih</span>';
-  }
+  (senarai || []).forEach(function (r) {
+    var k = kunciSubjek(r.subjek);
+    if (!ikut[k]) {
+      ikut[k] = { subjek: String(r.subjek == null ? '' : r.subjek).trim(), baris: [] };
+      kumpulan.push(ikut[k]);
+    }
+    ikut[k].baris.push(r);
+  });
+
+  return kumpulan;
+}
+
+function renderSummary() {
+  var senarai = state.failSenarai;
+  var kumpulan = kumpulanMengikutSubjek(senarai);
 
   var rows = [
     ['Minggu', weekLabel(state.targetWeek)],
-    ['Guru', guruRingkasan()],
-    ['Subjek', subject || '<span class="muted">Belum diisi</span>'],
-    ['Fail RPH', failTeks]
+    ['Guru', guruRingkasan()]
   ];
+
+  if (!senarai.length) {
+    rows.push(['Fail RPH', '<span class="muted">Belum dipilih</span>']);
+  } else {
+    /* Satu baris bagi setiap REKOD yang akan disimpan, bukan satu baris bagi
+       setiap fail: itulah yang perlu difahami guru sebelum dia menekan Hantar -
+       "tiga fail ini menjadi dua rekod". */
+    kumpulan.forEach(function (k) {
+      var kunci = k.subjek
+        ? escapeHtml(k.subjek)
+        : '<span class="muted">Belum diisi</span>';
+      rows.push([kunci, k.baris.length + ' fail']);
+    });
+
+    if (kumpulan.length > 1) {
+      rows.push(['Jumlah', senarai.length + ' fail · ' + kumpulan.length + ' rekod']);
+    }
+  }
 
   var html = rows.map(function (r) {
     return '<div class="row"><span class="k">' + r[0] + '</span>' +
@@ -927,7 +1057,14 @@ function renderSummary() {
   el.summary.className = 'summary';
   el.summary.innerHTML = html;
 
-  var ready = !!subject && (!!f || !!state.linkLama) &&
+  /* Sedia = ada sekurang-kurangnya satu fail DAN setiap baris mempunyai mata
+     pelajaran DAN minggu itu sah. Semakan subjek per baris ada di sini supaya
+     butang Hantar tidak pernah menghantar senarai yang separuh kosong. */
+  var lengkap = senarai.length > 0 && senarai.every(function (r) {
+    return !!String(r.subjek || '').trim();
+  });
+
+  var ready = lengkap &&
               state.targetWeek <= CONFIG.TOTAL_WEEKS && state.targetWeek >= 1;
   el.btnSubmit.disabled = !ready || state.sending;
 }
@@ -1018,68 +1155,95 @@ var UPLOAD_SERVER_MS = 150000;
 var UPLOAD_SERVER_MSG = 'Muat naik mengambil masa terlalu lama. Sila cuba fail ' +
                         'yang lebih kecil, atau periksa sambungan internet anda.';
 
+/* Ringkasan nama untuk mesej ralat. Senarai lapan nama fail akan menolak baris
+   mesej keluar dari skrin telefon, jadi ia dipotong dan bakinya dikira. */
+function senaraiNamaFail(baris, had) {
+  var nama = baris.map(function (b) { return b.fail.name; });
+  if (nama.length <= had) return nama.join(', ');
+  return nama.slice(0, had).join(', ') + ' +' + (nama.length - had) + ' lagi';
+}
+
 function onSubmit(ev) {
   ev.preventDefault();
   if (state.sending) return;
 
-  var subject = subjectValue();
-  if (!subject) {
-    setMsg('Sila pilih mata pelajaran.', 'bad');
-    /* Fokus mesti pergi ke kawalan yang benar-benar kosong - kalau tidak guru
-       melihat kursor berkelip pada senarai sambil diberitahu ia kosong. */
-    (subjectIsLain() ? el.subjectLain : el.subject).focus();
+  var baris = state.failSenarai.slice();
+
+  if (!baris.length) {
+    setMsg('Sila pilih fail RPH.', 'bad');
+    if (el.file) el.file.focus();
     return;
   }
 
-  var fail = state.file;
+  /* Setiap baris mesti mempunyai mata pelajaran. Disemak sebelum satu bait pun
+     dimuat naik - bukan selepas muat naik yang berjaya dan penulisan yang
+     ditolak (fail sudah berada dalam Drive tanpa rekod). */
+  var tiadaSubjek = baris.filter(function (r) {
+    return !String(r.subjek || '').trim();
+  });
 
-  /* Pautan rekod sedia ada mesti sah kalau tiada fail baharu dipilih. */
-  var link = { url: '' };
-  if (!fail) {
-    if (!state.linkLama) {
-      setMsg('Sila pilih fail RPH.', 'bad');
-      if (el.file) el.file.focus();
-      return;
-    }
-    link = parseLink(state.linkLama);
-    if (link.error || link.warn) {
-      setMsg('Fail rekod lama tidak dapat digunakan (' + (link.error || link.warn) +
-             '). Sila pilih fail RPH.', 'bad');
-      return;
-    }
+  if (tiadaSubjek.length) {
+    setMsg('Sila pilih mata pelajaran untuk ' +
+           (tiadaSubjek.length === 1
+             ? 'fail "' + tiadaSubjek[0].fail.name + '"'
+             : tiadaSubjek.length + ' fail') + '.', 'bad');
+    return;
+  }
+
+  /* Had SATU REKOD disemak di sini juga (pelayan menyemak semula - ini untuk
+     menjimatkan muat naik yang pasti ditolak). */
+  var lebih = kumpulanMengikutSubjek(baris).filter(function (k) {
+    return k.baris.length > MAX_FAIL_REKOD;
+  });
+
+  if (lebih.length) {
+    setMsg('Satu rekod hanya boleh menyimpan ' + MAX_FAIL_REKOD + ' fail: "' +
+           lebih[0].subjek + '" mempunyai ' + lebih[0].baris.length +
+           '. Hantar dalam dua kelompok, atau padam rekod itu di halaman Laporan ' +
+           'terlebih dahulu.', 'bad');
+    return;
   }
 
   state.sending = true;
   el.btnSubmit.disabled = true;
-  el.btnSubmit.textContent = fail ? 'Memuat naik…' : 'Menghantar…';
-  setMsg(fail ? 'Sedang memuat naik fail…' : 'Sedang menghantar…', 'wait');
+  el.btnSubmit.textContent = 'Memuat naik 1/' + baris.length + '…';
+  setMsg('Sedang memuat naik ' + baris.length + ' fail…', 'wait');
 
-  var hadMasa = fail ? UPLOAD_SERVER_MS : SLOW_SERVER_MS;
-  var mesejMasa = fail ? UPLOAD_SERVER_MSG : SLOW_SERVER_MSG;
+  hantarSenarai(baris, 0, [], []);
+}
 
-  /* Fail dibaca dahulu. Kalau bacaan gagal, tiada apa-apa yang dihantar dan
-     borang kekal utuh - guru tidak perlu menaip semula. */
-  var baca = fail ? bacaFailBase64(fail)
-                  : Promise.resolve('');
+/* Hantar SATU fail bagi setiap panggilan, BERURUTAN dari indeks i.
+   Berurutan dengan sengaja: muat naik serentak akan menghantar beberapa
+   permintaan besar sekali gus dari telefon, dan `state.sending` hanya menjaga
+   satu tekan butang - bukan sepuluh muat naik yang berlumba.
+   `berjaya` dan `gagal` diisi oleh pemanggil supaya ringkasan akhir boleh
+   dilaporkan per fail. */
+function hantarSenarai(baris, i, berjaya, gagal) {
+  if (i >= baris.length) { selesaiHantar(berjaya, gagal); return; }
 
-  baca
+  var r = baris[i];
+  var teks = 'Memuat naik ' + (i + 1) + '/' + baris.length + '…';
+  el.btnSubmit.textContent = teks;
+  setMsg(teks + ' ' + r.fail.name, 'wait');
+
+  /* Fail dibaca dahulu. Kalau bacaan gagal, fail itu dilaporkan sebagai gagal
+     dan yang lain diteruskan - borang kekal utuh. */
+  bacaFailBase64(r.fail)
     .then(function (b64) {
       var payload = {
         /* 'teacher' sengaja TIADA di sini: server menetapkan nama dan email
            daripada akaun yang log masuk. */
         action: 'submit',
         week: state.targetWeek,
-        subject: subject,
-        url: fail ? '' : link.url,      /* fail mengalahkan pautan */
-        tahun: CONFIG.TAHUN
-      };
-      if (b64) {
-        payload.file = {
-          name: fail.name,
-          mimeType: fail.type || 'application/octet-stream',
+        subject: String(r.subjek).trim(),
+        url: '',                 /* v49: fail sentiasa menjadi sumber pautan */
+        tahun: CONFIG.TAHUN,
+        file: {
+          name: r.fail.name,
+          mimeType: r.fail.type || 'application/octet-stream',
           dataBase64: b64
-        };
-      }
+        }
+      };
 
       /* v42: dalam mod pentadbir, penghantaran pergi ke apiPentadbirHantar dan
          membawa `sebagai` - email guru sasaran. `action` di atas tidak mengawal
@@ -1091,48 +1255,118 @@ function onSubmit(ev) {
          pentadbir dicatat berasingan dalam tab LogAdmin. */
       if (state.adminOn && state.adminGuru) {
         payload.sebagai = state.adminGuru.email;
-        return withTimeout(serverCall('apiPentadbirHantar', [payload]), hadMasa, mesejMasa);
+        return withTimeout(serverCall('apiPentadbirHantar', [payload]),
+                           UPLOAD_SERVER_MS, UPLOAD_SERVER_MSG);
       }
-      return withTimeout(serverCall('apiSubmit', [payload]), hadMasa, mesejMasa);
+      return withTimeout(serverCall('apiSubmit', [payload]),
+                         UPLOAD_SERVER_MS, UPLOAD_SERVER_MSG);
     })
     .then(function (res) {
       if (!res || !res.ok) throw new Error((res && res.error) || 'Gagal menghantar');
-
-      /* Pautan SEBENAR datang daripada pelayan (fail yang baru disimpan),
-         bukan daripada apa yang ditaip guru. */
-      var urlSimpan = res.url || link.url || '';
-      state.record = { week: state.targetWeek, url: urlSimpan, subject: subject };
-
-      /* v41: setiap penghantaran MENAMBAH satu baris rekod (tiada lagi
-         penggantian), jadi mesejnya menyebut berapa rekod minggu itu sekarang -
-         guru nampak kerjanya bertambah, bukan ditimpa. */
-      var extra = Number(res.rekodMinggu) > 1
-        ? 'Minggu ini kini ada ' + Number(res.rekodMinggu) + ' rekod.'
-        : '';
-      el.doneDetail.textContent = weekLabel(state.targetWeek) + ' · ' + subject +
-                                  (extra ? ' · ' + extra : '');
-      el.doneLink.href = urlSimpan || '#';
-
-      /* Amaran lembut: pautan sama pernah digunakan untuk minggu lain.
-         Dengan muat naik ini tidak sepatutnya berlaku, jadi ia hanya muncul
-         untuk rekod lama yang dikekalkan. */
-      if (res.urlElsewhere > 0) {
-        el.doneDetail.textContent +=
-          ' · Perhatian: fail ini juga ada pada ' + res.urlElsewhere +
-          ' rekod minggu lain. Sila semak jika tersalah.';
-      }
-
-      resetFile();
-      show('done');
+      berjaya.push({ baris: r, res: res });
     })
     .catch(function (err) {
-      setMsg('Gagal menghantar: ' + err.message + ' — sila cuba lagi.', 'bad');
+      gagal.push({ baris: r, ralat: (err && err.message) ? err.message : String(err) });
     })
-    .then(function () {
-      state.sending = false;
-      el.btnSubmit.textContent = 'HANTAR RPH';
-      renderSummary();
-    });
+    .then(function () { hantarSenarai(baris, i + 1, berjaya, gagal); });
+}
+
+/* Semua fail sudah dicuba. Ini SATU-SATUNYA tempat state.sending dipulihkan -
+   setiap jalan (berjaya, gagal separa, gagal penuh) melaluinya, jadi butang
+   tidak boleh tersangkut pada "Memuat naik…" selepas ralat. */
+function selesaiHantar(berjaya, gagal) {
+  state.sending = false;
+  el.btnSubmit.textContent = 'HANTAR RPH';
+
+  /* Baris yang BERJAYA dibuang dari senarai; yang GAGAL KEKAL - guru menekan
+     HANTAR RPH sekali lagi untuk mencuba yang gagal sahaja. Nama dan subjek
+     yang sudah dipilihnya tidak hilang, dan itu penting: memilih semula lapan
+     fail pada telefon ialah kerja yang tidak sepatutnya diulang kerana satu
+     muat naik gagal. */
+  var idGagal = {};
+  gagal.forEach(function (g) { idGagal[g.baris.id] = true; });
+  state.failSenarai = state.failSenarai.filter(function (r) { return idGagal[r.id]; });
+  if (el.file) el.file.value = '';
+
+  renderFail();
+  renderSummary();
+
+  /* Rekod minggu ini berubah (fail baharu ditambah), jadi kad "sudah hantar"
+     dan peta minggu dimuatkan semula dari pelayan - bukan dikira di pelanggan. */
+  refreshMe();
+
+  if (gagal.length) {
+    /* Kegagalan SEPARA: sebahagian fail sudah selamat dalam Drive dan menjadi
+       rekod. Guru mesti diberitahu DUA perkara - apa yang berjaya, dan apa yang
+       tinggal. */
+    var mesej = [];
+    if (berjaya.length) mesej.push(berjaya.length + ' fail berjaya dihantar');
+    mesej.push(gagal.length + ' gagal: ' + senaraiNamaFail(gagal.map(function (g) {
+      return { fail: g.baris.fail };
+    }), 3));
+    mesej.push('tekan HANTAR RPH untuk cuba semula yang gagal');
+    setMsg(mesej.join(' · '), 'bad');
+    return;
+  }
+
+  /* Semua berjaya. */
+  var urlSimpan = berjaya.length ? (berjaya[0].res.url || '') : '';
+  var bilRekod = kumpulanMengikutSubjek(berjaya.map(function (b) { return b.baris; })).length;
+  var bilDitambah = berjaya.filter(function (b) {
+    return b.res.mode === 'appended';
+  }).length;
+  var bilNamaSama = berjaya.filter(function (b) { return b.res.namaSama === true; }).length;
+  var bilPindah = berjaya.reduce(function (n, b) {
+    return n + Number(b.res.dipindah || 0);
+  }, 0);
+  var bilMingguLain = berjaya.reduce(function (n, b) {
+    return n + Number(b.res.urlElsewhere || 0);
+  }, 0);
+
+  state.record = {
+    week: state.targetWeek,
+    url: urlSimpan,
+    subject: String(berjaya[0].baris.subjek).trim()
+  };
+
+  var detail = weekLabel(state.targetWeek) + ' · ' + berjaya.length + ' fail · ' +
+               bilRekod + ' folder rekod';
+  /* v41: guru mesti NAMPAK kerjanya bertambah, bukan ditimpa - jadi apabila
+     minggu itu kini menyimpan lebih banyak rekod daripada yang baru dihantar,
+     jumlahnya disebut. (Teks ini yang diuji sejak v41.) */
+  var rekodMingguKini = berjaya.reduce(function (n, b) {
+    return Math.max(n, Number(b.res.rekodMinggu || 0));
+  }, 0);
+  if (rekodMingguKini > bilRekod) {
+    detail += ' · minggu ini kini ada ' + rekodMingguKini + ' rekod';
+  }
+  /* Satu mata pelajaran sahaja: sebut namanya. Guru yang menghantar RPH Sejarah
+     mesti membaca "Sejarah" pada skrin itu - dengan beberapa mata pelajaran,
+     senarai nama akan menolak baris lain keluar dari skrin telefon. */
+  if (kumpulanMengikutSubjek(berjaya.map(function (b) { return b.baris; })).length === 1) {
+    detail += ' · ' + String(berjaya[0].baris.subjek).trim();
+  }
+  if (bilDitambah) {
+    detail += ' · ' + bilDitambah + ' fail ditambah ke dalam folder rekod yang sudah ada';
+  }
+  if (bilPindah) {
+    detail += ' · fail RPH yang lama dipindahkan ke dalam folder itu juga';
+  }
+  if (bilNamaSama) {
+    detail += ' · Perhatian: ' + bilNamaSama + ' fail mempunyai nama yang sama ' +
+              'dengan fail yang sudah ada dalam folder itu. Kalau ini tersalah ' +
+              'tekan, padam rekod itu di halaman Laporan.';
+  }
+  if (bilMingguLain) {
+    detail += ' · Perhatian: pautan yang sama juga ada pada ' + bilMingguLain +
+              ' rekod minggu lain. Sila semak jika tersalah.';
+  }
+
+  el.doneDetail.textContent = detail;
+  el.doneLink.href = urlSimpan || '#';
+
+  resetFile();
+  show('done');
 }
 
 /* ============================================================
@@ -1156,32 +1390,74 @@ el.subject.addEventListener('change', function () {
   /* Fokus melompat ke kotak taip supaya guru terus boleh menaip - satu ketikan
      kurang, dan jelas bahawa "Lain-lain…" meminta teks. */
   if (subjectIsLain()) el.subjectLain.focus();
+  syncSubjekFail();
   renderSummary();
 });
 
-el.subjectLain.addEventListener('input', function () { renderSummary(); });
-
-el.file.addEventListener('change', function () {
-  pilihFail(this.files && this.files[0]);
+el.subjectLain.addEventListener('input', function () {
+  /* Kotak "Lain-lain" ditaip huruf demi huruf: setiap ketikan mengemas kini
+     baris fail yang masih mengikut medan utama, supaya peraturan "medan utama
+     ialah subjek lalai" juga benar untuk subjek yang ditaip sendiri. */
+  syncSubjekFail();
+  renderSummary();
 });
 
-el.fileClear.addEventListener('click', function () {
-  /* Buang fail yang dipilih. Kalau ini kemas kini rekod lama, pautan asal
-     dipulihkan supaya guru boleh simpan semula tanpa memilih fail.
+/* Hanya baris yang MASIH KOSONG mengikut medan utama.
+   Baris yang sudah mempunyai subjek TIDAK PERNAH diubah oleh medan itu, dan
+   sebabnya ialah aliran biasa v49: guru memilih dua fail BM, kemudian menukar
+   medan utama kepada Sejarah untuk menambah fail Sejarah. Kalau baris yang
+   sudah selesai ikut medan utama, dua fail BM itu bertukar menjadi Sejarah -
+   penghantaran yang SALAH, bukan sekadar paparan yang salah, dan guru tidak
+   akan perasan sehingga pentadbir membukanya.
 
-     v41: pautan itu hanya dipulihkan apabila rekod terakhir minggu ini memakai
-     SUBJEK yang sedang dipilih. Satu minggu kini menyimpan banyak rekod, jadi
-     memulihkan pautan "rekod terakhir" tanpa mengira subjek akan menyimpan fail
-     Matematik di bawah subjek Bahasa Inggeris - dan itu satu-satunya cara
-     penghantaran tanpa fail baharu boleh menghasilkan rekod yang SALAH, bukan
-     sekadar rekod tambahan. */
-  state.file = null;
-  if (el.file) el.file.value = '';
-  var r = state.record;
-  state.linkLama = (r && r.url && String(r.subject || '') === String(subjectValue()))
-    ? r.url : '';
-  el.url.value = state.linkLama;
-  renderFile();
+   Guru yang hendak membetulkan subjek sesuatu baris menukarnya pada baris itu
+   sendiri (setiap baris ada pemilihnya), atau membuang baris itu dan memilih
+   fail semula. */
+function syncSubjekFail() {
+  var v = subjectValue();
+  var berubah = false;
+
+  state.failSenarai.forEach(function (r) {
+    if (!String(r.subjek || '').trim() && r.subjek !== v) { r.subjek = v; berubah = true; }
+  });
+
+  if (berubah) renderFail();
+}
+
+el.file.addEventListener('change', function () {
+  /* v49: `multiple` - satu pemilihan boleh membawa beberapa fail. Setiap satu
+     menjadi barisnya sendiri di bawah. */
+  pilihFailSenarai(this.files);
+});
+
+/* Baris fail: SATU pendengar pada bekasnya, bukan satu pada setiap baris.
+   Baris dibina semula pada setiap perubahan, jadi pendengar per baris akan
+   menimbun seperti yang pernah berlaku pada chip minggu (v30). Delegasi juga
+   bermakna `Buang` berfungsi pada baris yang baru dilukis tanpa pendaftaran
+   semula. */
+el.failSenarai.addEventListener('click', function (ev) {
+  var btn = ev.target && ev.target.closest ? ev.target.closest('.fail-buang') : null;
+  if (!btn) return;
+  buangFail(btn.dataset.buang);
+});
+
+el.failSenarai.addEventListener('change', function (ev) {
+  var sel = ev.target;
+  if (!sel || !sel.classList || !sel.classList.contains('fail-subjek')) return;
+
+  var row = sel.closest ? sel.closest('.fail-row') : null;
+  if (!row) return;
+
+  var id = row.dataset.id;
+  var r = state.failSenarai.filter(function (x) { return x.id === id; })[0];
+  if (!r) return;
+
+  /* Setiap baris menyimpan pilihannya sendiri. Menukar baris kembali kepada
+     subjek medan utama tidak "mengikat" semula baris itu kepada medan utama -
+     ikatan itu hanya wujud selagi barisnya KOSONG (lihat syncSubjekFail()). */
+  r.subjek = sel.value;
+
+  renderFail();
   renderSummary();
 });
 

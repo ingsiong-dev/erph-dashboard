@@ -65,6 +65,16 @@ var LAP_FILE_SVG =
   'stroke-linejoin="round" d="M13.5 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 ' +
   '2-2V8.5zM13.5 3v5.5H19"/></svg>';
 
+/* v49: ikon FOLDER REKOD - setiap rekod kini menyimpan failnya dalam satu folder
+   Drive ("自动建文件夹。laporan打开文件夹"), jadi butang pada baris Laporan itu
+   membuka folder tersebut. Sama seperti ikon lain: SVG sebaris dengan
+   currentColor, bukan emoji. */
+var LAP_FOLDER_SVG =
+  '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" focusable="false">' +
+  '<path fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" ' +
+  'stroke-linejoin="round" d="M3 7.5A1.5 1.5 0 0 1 4.5 6h4l2 2.5h7A1.5 1.5 0 0 1 19 ' +
+  '10v7.5A1.5 1.5 0 0 1 17.5 19h-13A1.5 1.5 0 0 1 3 17.5z"/></svg>';
+
 /* ------------------------------------------------------------
    Penukar halaman
    ------------------------------------------------------------ */
@@ -267,7 +277,13 @@ function lapRenderGuru(data, modAdmin) {
 
       var tdPautan = document.createElement('td');
       tdPautan.className = 'lap-fail-cell';
+      /* v49: pautan itu ialah FOLDER rekod (RPH + RPT + bahan di dalamnya), jadi
+         ikonnya ikon folder dan ia membuka folder itu - guru melihat semua
+         failnya di sana. Rekod LAMA menyimpan pautan FAIL; bentuk pautan yang
+         menentukan ikon dan perkataan pada tooltip, kerana kedua-duanya muncul
+         dalam jadual yang sama semasa peralihan. */
       if (r.url) {
+        var folder = String(r.url).indexOf('/folders/') !== -1;
         var a = document.createElement('a');
         a.className = 'lap-fail';
         a.href = r.url;
@@ -277,9 +293,10 @@ function lapRenderGuru(data, modAdmin) {
            melebarkan lajur ini sehingga jadual sukar dibaca; tiada guru perlu
            membaca id fail itu - mereka hanya perlu menekannya. Teks penuh masih
            ada dalam title dan aria-label, jadi maklumat tidak hilang. */
-        a.innerHTML = LAP_FILE_SVG;
-        a.title = 'Buka fail RPH ' + weekLabel(r.minggu);
-        a.setAttribute('aria-label', 'Buka fail RPH ' + weekLabel(r.minggu));
+        a.innerHTML = folder ? LAP_FOLDER_SVG : LAP_FILE_SVG;
+        a.title = (folder ? 'Buka folder fail RPH ' : 'Buka fail RPH ') +
+                  weekLabel(r.minggu);
+        a.setAttribute('aria-label', a.title);
         tdPautan.appendChild(a);
       } else {
         /* Sama seperti lajur padam: sengkang, bukan sel kosong - sel kosong

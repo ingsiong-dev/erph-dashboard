@@ -256,29 +256,63 @@ input.good { border-color: var(--green); background: var(--green-soft); }
    yang menunggu untuk berlaku. .week-chip (peta kemajuan) KEKAL - ia kelas
    yang berbeza dan masih digunakan. */
 
-/* ---------- Pilih fail RPH ---------- */
-/* Kad yang menunjukkan fail yang dipilih (atau fail sedia ada yang akan
-   dikekalkan), dengan butang buang. */
-.chosen {
-  display: flex;
+/* ---------- Senarai fail RPH (v49) ---------- */
+/* Permintaan pengguna (1 Okt 2026): *"让老师可以一次交多本文件"*. Guru memilih
+   beberapa fail; setiap satu menjadi satu BARIS di sini dengan mata
+   pelajarannya sendiri, jadi satu penghantaran boleh merangkumi beberapa mata
+   pelajaran tanpa mengulang langkah.
+
+   Baris dibahagikan kepada dua baris pada telefon (nama, kemudian pemilih
+   subjek + Buang): nama fail boleh panjang ("RPH MAT T5 M40 versi 2.docx") dan
+   satu baris mendatar akan memaksa pemilih subjek keluar dari skrin.
+
+   Kelas `.chosen` / `.chosen-name` v11-v48 DIBUANG bersama markupnya - ia hanya
+   memaparkan SATU fail yang dipilih. Kod/CSS mati yang masih boleh dicapai
+   ialah bug yang menunggu untuk berlaku. */
+.fail-senarai { margin-top: 10px; }
+
+.fail-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "nama buang"
+    "subjek subjek";
+  gap: 7px 10px;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 9px;
-  padding: 8px 8px 8px 13px;
+  padding: 9px 11px 11px;
   background: var(--green-soft);
   border: 1px solid #bfe3cd;
   border-radius: 10px;
 }
 
-.chosen-name {
+.fail-row + .fail-row { margin-top: 8px; }
+
+.fail-nama {
+  grid-area: nama;
   font-size: 13.5px;
   font-weight: 650;
+  line-height: 1.35;
   word-break: break-all;
   min-width: 0;
 }
 
-.chosen .link-btn { padding: 4px 6px; flex: 0 0 auto; }
+.fail-row .fail-buang {
+  grid-area: buang;
+  padding: 4px 6px;
+  flex: 0 0 auto;
+}
+
+/* Pemilih subjek bagi satu baris. Tingginya 42px dan fontnya 16px - sama
+   peraturan seperti #subject: di bawah 16px Safari iOS mengezum halaman
+   apabila medan difokus, dan tinggi dikurangkan melalui `height`, bukan saiz
+   fon (v27). */
+.fail-subjek {
+  grid-area: subjek;
+  width: 100%;
+  height: 42px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
 
 /* Input fail: disembunyikan secara visual, tetapi KEKAL dalam susunan tab
    (1px, bukan display:none) supaya ia masih boleh difokus dengan papan kekunci.
