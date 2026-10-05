@@ -81,8 +81,15 @@ var CONFIG = {
      v52: bebola minggu "Cuti" menjadi KUNING dengan teks PUTIH (*"cuti 灰色->
      黄底白字"*). Kelabu v34 mudah dikelirukan dengan minggu HADAPAN, yang juga
      kelabu pucat dan rata. Tiada perubahan pada app.js sendiri; nombor ini naik
-     bersama styles.css. */
-  VERSI: 'v2.52'
+     bersama styles.css.
+
+     v53: HAD DINAIKKAN - satu penghantaran kini boleh membawa 30 fail
+     (*"提高上限。一次可以提交30个rph"*), dan satu REKOD juga 30 (dahulu 8 dan 6).
+     Setiap fail tetap dihantar dalam panggilannya sendiri, jadi ini 30 permintaan
+     kecil berturutan, bukan satu permintaan 300 MB. Nombor ini naik bersama
+     app.js (had), Code.gs (had server + satu senarai folder bagi setiap
+     permintaan) dan halaman yang menggunakannya. */
+  VERSI: 'v2.53'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
@@ -774,8 +781,13 @@ function renderAlready() {
        fail yang gagal, bukan memilih semula kesemuanya. */
 
 var MAX_FAIL_MB = 10;        /* had satu fail - sama dengan CONFIG.MAX_UPLOAD_MB */
-var MAX_FAIL_HANTAR = 8;     /* had satu penghantaran (satu tekan HANTAR RPH) */
-var MAX_FAIL_REKOD = 6;      /* had satu rekod - sama dengan CONFIG.MAX_FAIL_REKOD */
+/* Had satu penghantaran. Pengguna, 2 Okt 2026: *"提高上限。一次可以提交30个rph"* -
+   jadi ia naik dari 8 kepada 30. Ini BUKAN satu permintaan 300 MB: setiap fail
+   dihantar dalam panggilannya sendiri, berturutan (lihat hantarSenarai), jadi 30
+   fail ialah 30 permintaan kecil dan kegagalan satu fail tidak menyentuh yang
+   lain. */
+var MAX_FAIL_HANTAR = 30;    /* had satu penghantaran (satu tekan HANTAR RPH) */
+var MAX_FAIL_REKOD = 30;     /* had satu rekod - sama dengan CONFIG.MAX_FAIL_REKOD */
 
 function saizMb(bait) {
   var mb = Number(bait || 0) / 1048576;
