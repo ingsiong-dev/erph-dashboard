@@ -137,6 +137,45 @@
       <button class="link-btn" id="btn-change" type="button">Bukan anda?</button>
     </div>
 
+    <!-- v54: peta kemajuan diletakkan terus di bawah nama guru supaya minggu
+         boleh dipilih sebelum guru membaca atau mengisi borang penghantaran. -->
+    <div class="card progress-card">
+      <div class="progress-head">
+        <span class="muted progress-label">Kemajuan anda</span>
+        <strong id="prog-text">—</strong>
+      </div>
+      <p class="week-hint muted small" id="week-hint">Klik nombor minggu di bawah
+        untuk pilih minggu itu — termasuk minggu yang sudah dihantar, untuk
+        dikemas kini.</p>
+      <div class="weeks" id="weeks"></div>
+
+      <div class="legend">
+        <span><i class="dot done"></i>Selesai</span>
+        <span><i class="dot miss"></i>Belum</span>
+        <span><i class="dot cuti"></i>Cuti</span>
+
+        <!-- v36: maklum balas SERTA-MERTA selepas menekan bebola minggu. Guru
+             yang menekan dan tidak nampak apa-apa berlaku akan menekan lagi -
+             kadang-kadang pada minggu yang BERLAINAN, dan dua permintaan apiMe
+             berlumba. Permintaan pengguna: "按了 minggu 的按钮，左下角显示
+             Loading... 避免老师一位没按到，按多次".
+
+             Tempatnya sudah dua kali berpindah; pengguna yang menentukan:
+               v36 - di bawah peta minggu ("左下角")
+               v37 - slot kanan baris "Kemajuan anda" ("那边的Loading... 哦")
+               v38 - HUJUNG KANAN baris legend ("放右下角") <- SEKARANG
+
+             Ia anak TERAKHIR .legend dan ditolak ke tepi kanan oleh
+             `#week-loading { margin-left: auto }` dalam styles.css, jadi ia
+             duduk di sudut bawah-kanan kad ini. .legend membenarkan wrap:
+             kalau skrin terlalu sempit untuk legend + pemuat pada satu baris,
+             pemuat turun ke barisnya sendiri - masih di kanan.
+             Ia muncul pada klik dan hilang apabila data minggu itu tiba
+             (renderSend()), jadi ia tidak pernah tersangkut. -->
+        <span class="muted small hidden" id="week-loading">Loading…</span>
+      </div>
+    </div>
+
     <div id="banner" class="banner"></div>
 
     <!-- v42: hanya kelihatan dalam mod pentadbir. Ia menyatakan dengan JELAS
@@ -248,42 +287,6 @@
       <p class="msg" id="msg" role="status"></p>
     </form>
 
-    <div class="card progress-card">
-      <div class="progress-head">
-        <span class="muted progress-label">Kemajuan anda</span>
-        <strong id="prog-text">—</strong>
-      </div>
-      <p class="week-hint muted small" id="week-hint">Klik nombor minggu di bawah
-        untuk pilih minggu itu — termasuk minggu yang sudah dihantar, untuk
-        dikemas kini.</p>
-      <div class="weeks" id="weeks"></div>
-
-      <div class="legend">
-        <span><i class="dot done"></i>Selesai</span>
-        <span><i class="dot miss"></i>Belum</span>
-        <span><i class="dot cuti"></i>Cuti</span>
-
-        <!-- v36: maklum balas SERTA-MERTA selepas menekan bebola minggu. Guru
-             yang menekan dan tidak nampak apa-apa berlaku akan menekan lagi -
-             kadang-kadang pada minggu yang BERLAINAN, dan dua permintaan apiMe
-             berlumba. Permintaan pengguna: "按了 minggu 的按钮，左下角显示
-             Loading... 避免老师一位没按到，按多次".
-
-             Tempatnya sudah dua kali berpindah; pengguna yang menentukan:
-               v36 - di bawah peta minggu ("左下角")
-               v37 - slot kanan baris "Kemajuan anda" ("那边的Loading... 哦")
-               v38 - HUJUNG KANAN baris legend ("放右下角") <- SEKARANG
-
-             Ia anak TERAKHIR .legend dan ditolak ke tepi kanan oleh
-             `#week-loading { margin-left: auto }` dalam styles.css, jadi ia
-             duduk di sudut bawah-kanan kad ini. .legend membenarkan wrap:
-             kalau skrin terlalu sempit untuk legend + pemuat pada satu baris,
-             pemuat turun ke barisnya sendiri - masih di kanan.
-             Ia muncul pada klik dan hilang apabila data minggu itu tiba
-             (renderSend()), jadi ia tidak pernah tersangkut. -->
-        <span class="muted small hidden" id="week-loading">Loading…</span>
-      </div>
-    </div>
   </section>
 
   <!-- ============ 3. SIAP ============ -->
@@ -469,9 +472,9 @@ var __erph = {
   backend: "https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec",
   redirectUri: "https://ingsiong-dev.github.io/erph-dashboard/e-rph/",
   /* What the teacher reads: the app's own version. */
-  versi: 'v2.53',
+  versi: 'v2.54',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: 'b281c6a',
+  build: 'd6dfee3',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never

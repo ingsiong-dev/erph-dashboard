@@ -89,7 +89,7 @@ var CONFIG = {
      kecil berturutan, bukan satu permintaan 300 MB. Nombor ini naik bersama
      app.js (had), Code.gs (had server + satu senarai folder bagi setiap
      permintaan) dan halaman yang menggunakannya. */
-  VERSI: 'v2.53'
+  VERSI: 'v2.54'
 };
 
 /* Nilai opsyen "Lain-lain…" dalam #subject. Huruf besar dan bergaris bawah
