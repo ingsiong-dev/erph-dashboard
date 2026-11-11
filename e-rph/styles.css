@@ -247,8 +247,15 @@ input.good { border-color: var(--green); background: var(--green-soft); }
 
 /* ---------- Sudah hantar ---------- */
 
-.already { border: 2px solid var(--green); background: var(--green-soft); }
-.already h3 { color: var(--green); }
+.already {
+  border: 2px solid var(--green);
+  background: var(--green-soft);
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+.already .big-icon { font-size: 27px; margin-bottom: 4px; }
+.already h3 { color: var(--green); margin-bottom: 3px; }
+.already p { margin: 3px 0 0; }
 
 /* ---------- Chips subjek (v4-v21, DIBUANG dalam v22) ---------- */
 /* v22 menggantikan chip dengan <select id="subject">. Peraturan .chip dan
