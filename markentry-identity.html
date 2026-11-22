@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="ms"><head><meta charset="utf-8"><title>Mark Entry identity bridge</title></head>
+<body><script>
+(function () {
+  'use strict';
+  var PARENT_ORIGIN = 'https://drc.ingsiongdev.com';
+  var BACKEND = 'https://script.google.com/macros/s/AKfycbw9caZAp2b-xNSsCP2j5jrDg3g3svCsSdIFagsubOYd7DSAJQgMZ_bpBYzplGPB9kW3/exec';
+  function stored(key) { try { return localStorage.getItem(key); } catch (e) { return null; } }
+  function usable(token) {
+    try {
+      var part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (part.length % 4) part += '=';
+      var claims = JSON.parse(atob(part));
+      return !claims.exp || claims.exp * 1000 > Date.now() + 30000;
+    } catch (e) { return false; }
+  }
+  function reply(payload) { parent.postMessage(payload, PARENT_ORIGIN); }
+  var session = stored('erph-sesi');
+  var token = /^sesi_[0-9a-f]{32}$/.test(session || '') ? session : stored('erph-token');
+  if (!token || (token.indexOf('sesi_') !== 0 && !usable(token))) {
+    reply({ type: 'markentry-erph-identity', ok: false, reason: 'login_required' });
+    return;
+  }
+  fetch(BACKEND, {
+    method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'bootstrap', token: token })
+  }).then(function (response) { return response.json(); }).then(function (data) {
+    var name = data && data.ok && data.nama ? String(data.nama).trim() : '';
+    if (!name) throw new Error((data && data.error) || 'Nama guru tidak diterima.');
+    reply({ type: 'markentry-erph-identity', ok: true, name: name });
+  }).catch(function (error) {
+    reply({ type: 'markentry-erph-identity', ok: false, reason: 'verification_failed', message: error.message });
+  });
+}());
+</script></body></html>
