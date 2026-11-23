@@ -26,8 +26,9 @@
     body: JSON.stringify({ action: 'bootstrap', token: token })
   }).then(function (response) { return response.json(); }).then(function (data) {
     var name = data && data.ok && data.nama ? String(data.nama).trim() : '';
-    if (!name) throw new Error((data && data.error) || 'Nama guru tidak diterima.');
-    reply({ type: 'markentry-erph-identity', ok: true, name: name });
+    var email = data && data.ok && data.email ? String(data.email).trim().toLowerCase() : '';
+    if (!name || !email) throw new Error((data && data.error) || 'Identiti guru tidak diterima.');
+    reply({ type: 'markentry-erph-identity', ok: true, name: name, email: email });
   }).catch(function (error) {
     reply({ type: 'markentry-erph-identity', ok: false, reason: 'verification_failed', message: error.message });
   });
