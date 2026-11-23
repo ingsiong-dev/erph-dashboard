@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ms">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log masuk DRC</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;
+       background:#eef2f7;font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1b365d;padding:24px}
+  .card{max-width:440px;width:100%;background:#fff;border-radius:18px;padding:28px;text-align:center;
+        box-shadow:0 12px 36px rgba(15,23,42,.12)}
+  h1{font-size:21px;margin:0 0 8px}
+  p{margin:0 0 18px;color:#526173;font-size:14px;line-height:1.55}
+  a.btn,button.btn{display:inline-block;border:0;border-radius:12px;padding:12px 18px;background:#1a73e8;color:#fff;
+        font:inherit;font-weight:700;text-decoration:none;cursor:pointer;margin:4px 0;width:100%}
+  button.check{background:#e8eef7;color:#1b365d}
+  .note{margin-top:14px;font-size:12px;color:#7b8798}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Log masuk eRPH dahulu</h1>
+  <p>DRC menggunakan akaun DELIMA yang sama seperti eRPH. Selepas log masuk eRPH,
+     kembali ke halaman ini untuk meneruskan.</p>
+  <a class="btn" href="https://ingsiong-dev.github.io/erph-dashboard/e-rph/" target="_self">Log masuk DELIMA (eRPH)</a>
+  <button class="btn check" type="button" id="semula">Saya sudah log masuk</button>
+  <p class="note" id="nota">Halaman ini akan terus membuka DRC apabila sesi ditemui.</p>
+</div>
+<script>
+  "use strict";
+  /* Halaman ini berjalan pada ASAL ingsiong-dev.github.io — asal yang sama dengan
+     eRPH — jadi ia boleh membaca token eRPH dalam localStorage. Iframe tidak boleh
+     (penyimpanan pihak ketiga dipisahkan mengikut laman atas), sebab itu DRC
+     memerlukan halaman perantara ini. */
+  var DRC = "https://drc.ingsiongdev.com/#t=";
+  var KUNCI = ["erph-sesi", "erph-token"];
+
+  function baca(k){ try { return localStorage.getItem(k) || ""; } catch (e){ return ""; } }
+  function masihSah(t){
+    if (/^sesi_[0-9a-f]{32}$/.test(t)) return true;
+    try {
+      var p = t.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+      while (p.length % 4) p += "=";
+      var c = JSON.parse(atob(p));
+      return !c.exp || c.exp * 1000 > Date.now() + 60000;
+    } catch (e){ return false; }
+  }
+  function cariToken(){
+    for (var i = 0; i < KUNCI.length; i++){
+      var t = baca(KUNCI[i]);
+      if (t && masihSah(t)) return t;
+    }
+    return "";
+  }
+  function pergi(){
+    var t = cariToken();
+    if (t) { location.replace(DRC + encodeURIComponent(t)); return true; }
+    return false;
+  }
+
+  if (!pergi()){
+    document.getElementById("nota").textContent =
+      "Belum ada sesi eRPH pada peranti ini. Log masuk dahulu, kemudian tekan “Saya sudah log masuk”.";
+  }
+  document.getElementById("semula").addEventListener("click", function(){ if (!pergi()) location.reload(); });
+  window.addEventListener("pageshow", function(){ pergi(); });
+  window.addEventListener("focus", function(){ pergi(); });
+</script>
+</body>
+</html>
