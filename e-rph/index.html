@@ -473,7 +473,7 @@ var __erph = {
   /* What the teacher reads: the app's own version. */
   versi: 'v2.58',
   /* What tells a STALE cached page apart: a content hash, shown only on hover. */
-  build: '09c6332',
+  build: 'afbbc78',
 };
 
 /* google.script.run re-implemented with fetch. The real app.js/laporan.js never
@@ -585,8 +585,11 @@ window.google = { script: { run: { withSuccessHandler: function (f) { return new
 function __loadApp() {
   if (__erph.loaded) return;
   __erph.loaded = true;
-  var s1 = document.createElement('script'); s1.src = 'app.js';
-  var s2 = document.createElement('script'); s2.src = 'laporan.js';
+  /* Build id pada URL memecahkan cache CDN/pelayar selepas deploy. Tanpanya,
+     index.html v2.58 boleh memuatkan app.js v2.57 daripada cache dan footer
+     berbohong tentang build yang sedang berjalan. */
+  var s1 = document.createElement('script'); s1.src = 'app.js?v=' + __erph.build;
+  var s2 = document.createElement('script'); s2.src = 'laporan.js?v=' + __erph.build;
   s1.onload = function () { document.body.appendChild(s2); };
   document.body.appendChild(s1);
 }
